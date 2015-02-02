@@ -49,7 +49,7 @@ def parseArgs(argv):
     return nbOfDevices, periodOfDevice
 
 def value_changed_handler(event):
-    print('{"timestamp" : %f, "sensor" : %i, "value" : %i}'
+    print('{"timestamp" : %f, "sensor" : "%i", "value" : %i}'
           % (time.time(), event.index, event.value))
 
 def dump_as_csv(event):

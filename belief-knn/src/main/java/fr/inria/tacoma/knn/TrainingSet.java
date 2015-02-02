@@ -37,4 +37,8 @@ public class TrainingSet {
     public Map<String, Double> getStandardDevs() {
         return standardDevs;
     }
+
+    public int getSize() {
+        return points.size();
+    }
 }
