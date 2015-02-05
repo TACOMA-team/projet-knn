@@ -6,8 +6,6 @@ import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
 
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -31,29 +29,6 @@ public class KnnBelief implements SensorBeliefModel {
         this.combination = combination;
         this.points = trainingSet.getPoints();
         this.gammaProvider = trainingSet.getStandardDevs();
-    }
-
-    /*
-     * We have m(A)= alpha * exp(-gamma * distance) for each point in the training set.
-     * Gamma depends on the class of the point so we create a map which gives gamma for
-     * each class in the formula.
-     * We currently use the standard deviation for the class as gamma.
-     */
-    private HashMap<String, Double> generateGammaProvider(List<Point> points) {
-        HashMap<String, Double> provider = new HashMap<>();
-
-        frame.getStates().stream()
-                .forEach( state -> {
-                    double[] pointValues = points.stream()
-                            .filter(p -> p.getLabel().equals(state))
-                            .mapToDouble(Point::getValue).toArray();
-                    double average = Arrays.stream(pointValues)
-                            .average().orElse(0); //if there is no point which has this label we return a default value
-                    double squareAverage = Arrays.stream(pointValues).map(x -> x * x)
-                            .average().orElse(0);
-                    provider.put(state, 1.0 / Math.sqrt(squareAverage - average * average));
-                });
-        return provider;
     }
 
     private List<Point> knn(double value) {
