@@ -44,11 +44,14 @@ public class Point {
     public void setTimestamp(double timestamp) {
         this.timestamp = timestamp;
     }
+
     @Override
     public String toString() {
         return "{" +
                 "\"value\" : " + value +
+                ", \"sensor\" : \"" + sensor + '\"' +
                 ", \"label\" : \"" + label + '\"' +
+                ", \"timestamp\" : " + timestamp +
                 '}';
     }
 }
