@@ -46,7 +46,7 @@ public class JfreeChartDisplay {
         return chartPanel;
     }
 
-    public static ChartPanel getChartPanel(SensorBeliefModel beliefModel, int numPoints, double min,
+    public static ChartPanel getChartPanel(SensorBeliefModel<Double> beliefModel, int numPoints, double min,
                                            double max) {
         TreeMap<Double, MassFunction> massFunctionSet = new TreeMap<>();
         Map<Double, MassFunction> syncMap = Collections.synchronizedMap(massFunctionSet);

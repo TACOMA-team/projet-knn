@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class KnnBelief implements SensorBeliefModel {
+public class KnnBelief implements SensorBeliefModel<Double> {
 
     private final int k;
     private final double alpha;
@@ -56,7 +56,7 @@ public class KnnBelief implements SensorBeliefModel {
     }
 
     @Override
-    public MassFunction toMass(double sensorValue) {
+    public MassFunction toMass(Double sensorValue) {
         List<Point> knn = knn(sensorValue);
         List<MassFunction> masses = knn.stream()
                 .map(p -> getMassFunction(sensorValue, p))

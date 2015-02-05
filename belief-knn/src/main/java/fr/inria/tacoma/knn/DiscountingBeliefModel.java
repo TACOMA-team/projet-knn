@@ -6,19 +6,19 @@ import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 
 import java.util.function.Function;
 
-public class DiscountingBeliefModel implements SensorBeliefModel {
+public class DiscountingBeliefModel implements SensorBeliefModel<Double> {
 
-    private SensorBeliefModel underlyingModel;
+    private SensorBeliefModel<Double> underlyingModel;
     private Function<Double, Double> weakeningFunction;
 
-    public DiscountingBeliefModel(SensorBeliefModel underlyingModel,
+    public DiscountingBeliefModel(SensorBeliefModel<Double> underlyingModel,
                                   Function<Double, Double> weakeningFunction) {
         this.underlyingModel = underlyingModel;
         this.weakeningFunction = weakeningFunction;
     }
 
     @Override
-    public MassFunction toMass(double sensorValue) {
+    public MassFunction toMass(Double sensorValue) {
         MassFunction massFunction = underlyingModel.toMass(sensorValue);
         massFunction.discount(weakeningFunction.apply(sensorValue));
         return massFunction;
