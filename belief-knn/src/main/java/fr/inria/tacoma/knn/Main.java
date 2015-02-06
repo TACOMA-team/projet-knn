@@ -15,6 +15,9 @@ import fr.inria.tacoma.bft.decision.Decision;
 import fr.inria.tacoma.bft.decision.DecisionStrategy;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
+import fr.inria.tacoma.knn.unidimensional.JfreeChartDisplay;
+import fr.inria.tacoma.knn.unidimensional.KnnBelief;
+import fr.inria.tacoma.knn.unidimensional.SensorValue;
 import org.jfree.chart.ChartPanel;
 
 import javax.swing.*;
@@ -29,7 +32,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-        List<Point> points = getPoints("absence", "absence-motion1.json");
+        List<SensorValue> points = getPoints("absence", "absence-motion1.json");
         points.addAll(getPoints("presence", "presence-motion1.json"));
         points.sort((p1, p2) -> Double.compare(p1.getValue(), p2.getValue()));
         points.forEach(p -> p.setValue(Math.abs(p.getValue() - 2048)));
@@ -115,17 +118,17 @@ public class Main {
      * @return list of points in the file
      * @throws IOException
      */
-    private static List<Point> getPoints(String label, String file) throws IOException {
+    private static List<SensorValue> getPoints(String label, String file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         InputStream resourceAsStream = Thread.currentThread().getContextClassLoader()
                 .getResourceAsStream(file);
-        MappingIterator<Point> iterator = mapper.readValues(
+        MappingIterator<SensorValue> iterator = mapper.readValues(
                 new JsonFactory().createParser(resourceAsStream),
-                Point.class);
-        List<Point> points = new ArrayList<>();
+                SensorValue.class);
+        List<SensorValue> points = new ArrayList<>();
         while (iterator.hasNext()) {
-            Point next = iterator.next();
+            SensorValue next = iterator.next();
             next.setLabel(label);
             points.add(next);
         }
@@ -185,7 +188,7 @@ public class Main {
     }
 
 
-    private static double error(List<Point> points, SensorBeliefModel model) {
+    private static double error(List<SensorValue> points, SensorBeliefModel model) {
         return points.stream().mapToDouble(point -> {
             MassFunction actualMassFunction = model.toMass(point.getValue());
             MassFunction idealMassFunction = new MassFunctionImpl(model.getFrame());

@@ -1,4 +1,4 @@
-package fr.inria.tacoma.knn;
+package fr.inria.tacoma.knn.unidimensional;
 
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
