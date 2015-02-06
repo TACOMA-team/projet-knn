@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class KnnBelief implements SensorBeliefModel<Double> {
+public class KnnBelief1D implements SensorBeliefModel<Double> {
 
     private final int k;
     private final double alpha;
@@ -21,9 +21,9 @@ public class KnnBelief implements SensorBeliefModel<Double> {
     private final Map<String, Double> gammaProvider;
     Function<List<MassFunction>, MassFunction> combination;
 
-    public KnnBelief(TrainingSet trainingSet, int k, double alpha,
-                     FrameOfDiscernment frame,
-                     Function<List<MassFunction>, MassFunction> combination) {
+    public KnnBelief1D(TrainingSet trainingSet, int k, double alpha,
+                       FrameOfDiscernment frame,
+                       Function<List<MassFunction>, MassFunction> combination) {
         this.k = k;
         this.alpha = alpha;
         this.frame = frame;

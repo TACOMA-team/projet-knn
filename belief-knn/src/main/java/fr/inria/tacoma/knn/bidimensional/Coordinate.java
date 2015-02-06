@@ -16,4 +16,10 @@ public class Coordinate {
     public double getY() {
         return y;
     }
+
+    public double distance(Coordinate that) {
+        double xDiff = this.getX() - that.getX();
+        double yDiff = (this.getY() - that.getY());
+        return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
+    }
 }

@@ -1,4 +1,4 @@
-package fr.inria.tacoma.knn;
+package fr.inria.tacoma.knn.unidimensional;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -15,9 +15,8 @@ import fr.inria.tacoma.bft.decision.Decision;
 import fr.inria.tacoma.bft.decision.DecisionStrategy;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
-import fr.inria.tacoma.knn.unidimensional.JfreeChartDisplay;
-import fr.inria.tacoma.knn.unidimensional.KnnBelief;
-import fr.inria.tacoma.knn.unidimensional.SensorValue;
+import fr.inria.tacoma.knn.DiscountingBeliefModel;
+import fr.inria.tacoma.knn.TrainingSet;
 import org.jfree.chart.ChartPanel;
 
 import javax.swing.*;
@@ -53,7 +52,7 @@ public class Main {
      */
     private static void displayWithWeakening(FrameOfDiscernment frame, TrainingSet trainingSet,
                                              double min, double max) {
-        KnnBelief beliefModel = getBestKnnBelief(frame, trainingSet);
+        KnnBelief1D beliefModel = getBestKnnBelief(frame, trainingSet);
         DiscountingBeliefModel weakened = generateWeakeningModel(beliefModel, trainingSet);
 
         ChartPanel chartPanel = JfreeChartDisplay.getChartPanel(weakened, 2000, min, max);
@@ -75,7 +74,7 @@ public class Main {
 
 
         for (int neighborCount = 1; neighborCount <= 120; neighborCount++) {
-            KnnBelief beliefModel = new KnnBelief(trainingSet, neighborCount, ALPHA, frame,
+            KnnBelief1D beliefModel = new KnnBelief1D(trainingSet, neighborCount, ALPHA, frame,
                     Main::optimizedDuboisAndPrade);
 
             JPanel panel = JfreeChartDisplay.getChartPanel(beliefModel, 2000, 0, 2000);
@@ -142,7 +141,7 @@ public class Main {
      * @param trainingSet training set on which we apply knn.
      */
     private static void showBestMatch(FrameOfDiscernment frame, TrainingSet trainingSet) {
-        KnnBelief bestModel = getBestKnnBelief(frame, trainingSet);
+        KnnBelief1D bestModel = getBestKnnBelief(frame, trainingSet);
 
         ChartPanel chartPanel = JfreeChartDisplay.getChartPanel(bestModel, 2000, 0, 2000);
         JFrame windowFrame = new JFrame();
@@ -153,7 +152,7 @@ public class Main {
 
     }
 
-    private static KnnBelief getBestKnnBelief(FrameOfDiscernment frame, TrainingSet trainingSet) {
+    private static KnnBelief1D getBestKnnBelief(FrameOfDiscernment frame, TrainingSet trainingSet) {
         return getBestKnnBelief(frame, trainingSet, trainingSet.getSize() - 1);
     }
 
@@ -167,14 +166,14 @@ public class Main {
      *                         of the training set)
      * @return
      */
-    private static KnnBelief getBestKnnBelief(FrameOfDiscernment frame, TrainingSet trainingSet,
+    private static KnnBelief1D getBestKnnBelief(FrameOfDiscernment frame, TrainingSet trainingSet,
                                               int maxNeighborCount) {
         double lowestError = Double.POSITIVE_INFINITY;
-        KnnBelief bestModel = null;
+        KnnBelief1D bestModel = null;
 
         maxNeighborCount = Math.min(maxNeighborCount, trainingSet.getSize() - 1);
         for (int neighborCount = 1; neighborCount <= maxNeighborCount; neighborCount++) {
-            KnnBelief beliefModel = new KnnBelief(trainingSet, neighborCount, ALPHA, frame,
+            KnnBelief1D beliefModel = new KnnBelief1D(trainingSet, neighborCount, ALPHA, frame,
                     Main::optimizedDuboisAndPrade);
             double error = error(trainingSet.getPoints(), beliefModel);
             if (error < lowestError) {

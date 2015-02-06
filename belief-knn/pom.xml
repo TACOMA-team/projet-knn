@@ -12,7 +12,7 @@
         <dependency>
             <groupId>fr.inria.tacoma</groupId>
             <artifactId>JBFT</artifactId>
-            <version>0.1</version>
+            <version>0.2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -41,7 +41,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.2.1</version>
                 <configuration>
-                    <mainClass>fr.inria.tacoma.knn.Main</mainClass>
+                    <mainClass>fr.inria.tacoma.knn.unidimensional.Main</mainClass>
                 </configuration>
             </plugin>
         </plugins>
