@@ -11,7 +11,6 @@ import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
-import fr.inria.tacoma.knn.TrainingSet;
 import fr.inria.tacoma.knn.generic.KnnBelief;
 import fr.inria.tacoma.knn.generic.Point;
 import fr.inria.tacoma.knn.unidimensional.SensorValue;
@@ -25,29 +24,59 @@ import java.util.List;
 
 public class Main2D {
 
-    public static final double ALPHA = 0.6;
+    public static final double ALPHA = 0.3;
 
     public static void main(String[] args) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-        List<SensorValue> points = getPoints("absence", "absence-motion1.json");
-        points.addAll(getPoints("presence", "presence-motion1.json"));
-        points.sort((p1, p2) -> Double.compare(p1.getTimestamp(), p1.getTimestamp()));
-//        points.forEach(p -> p.setValue(Math.abs(p.getValue() - 2048)));
-        TrainingSet trainingSet = new TrainingSet(points);
-        List<Point<Coordinate>> points2D = to2D(points);
+        List<SensorValue> absence = getPoints("absence", "absence-motion1.json");
+        List<SensorValue> presence = getPoints("presence", "presence-motion1.json");
 
-        //showBestMatch(frame, points2D);
-        show(frame.toStateSet("absence", "presence"), new KnnBelief<Coordinate>(points2D, 12, ALPHA, frame,
-                Main2D::optimizedDuboisAndPrade, Coordinate::distance));
+        // transforming to 2 dimensions (lists must be ordered by timestamp)
+        List<Point<Coordinate>> absence2D = to2D(absence);
+        List<Point<Coordinate>> presence2D = to2D(presence);
+
+        // extracting cross validation data
+        List<Point<Coordinate>> crossValidationPoints = extractSubList(absence2D, 0.6);
+        crossValidationPoints.addAll(extractSubList(presence2D, 0.6));
+
+        List<Point<Coordinate>> trainingSet = new ArrayList<>();
+        trainingSet.addAll(presence2D);
+        trainingSet.addAll(absence2D);
+
+        showBestMatchWithFixedAlpha(frame.toStateSet("presence"), frame, trainingSet,
+                crossValidationPoints);
     }
+
+    /**
+     * Extract the end of a list and returns the extracted list. The items will
+     * be removed from the list given as an argument. The function takes a ratio
+     * which is the quantity of items ( between  0.0 and 1.0) which is kept in
+     * list. It is useful to split a list between the learning set and the
+     * cross validation set.
+     * @param list list to split
+     * @param ratio ratio of the list to keep.
+     * @return the extracted list.
+     */
+    private static <T>  List<T> extractSubList(List<T> list, double ratio) {
+        assert ratio < 1.0;
+        List<T> subList = list.subList((int)((list.size() - 1) * ratio), list.size() - 1);
+        List<T> extracted = new ArrayList<>();
+        extracted.addAll(subList);
+        subList.clear();
+        return extracted;
+    }
+
+
 
     /**
      * Shows the model having the lowest error depending on K.
      *  @param frame       frame of discernment
      * @param points training set on which we apply knn.
      */
-    private static void showBestMatch(StateSet stateSet, FrameOfDiscernment frame, List<Point<Coordinate>> points) {
-        show(stateSet, getBestKnnBelief(frame, points));
+    private static void showBestMatchWithFixedAlpha(StateSet stateSet, FrameOfDiscernment frame,
+                                                    List<Point<Coordinate>> points,
+                                                    List<Point<Coordinate>> testSample) {
+        show(stateSet, getBestKnnBelief(frame, points, testSample));
 
     }
 
@@ -62,8 +91,9 @@ public class Main2D {
     }
 
     private static KnnBelief<Coordinate> getBestKnnBelief(FrameOfDiscernment frame,
-                                              List<Point<Coordinate>> points) {
-        return getBestKnnBelief(frame, points, points.size() - 1);
+                                              List<Point<Coordinate>> points,
+                                              List<Point<Coordinate>> testSample) {
+        return getBestKnnBelief(frame, points, testSample, points.size() - 1);
     }
 
     /**
@@ -78,6 +108,7 @@ public class Main2D {
      */
     private static KnnBelief<Coordinate> getBestKnnBelief(FrameOfDiscernment frame,
                                                           List<Point<Coordinate>> points,
+                                                          List<Point<Coordinate>> testSample,
                                                           int maxNeighborCount) {
         double lowestError = Double.POSITIVE_INFINITY;
         KnnBelief<Coordinate> bestModel = null;
@@ -87,7 +118,7 @@ public class Main2D {
             KnnBelief<Coordinate> beliefModel =
                     new KnnBelief<>(points, neighborCount, ALPHA, frame,
                     Main2D::optimizedDuboisAndPrade, Coordinate::distance);
-            double error = error(points, beliefModel);
+            double error = error(testSample, beliefModel);
             if (error < lowestError) {
                 lowestError = error;
                 bestModel = beliefModel;
