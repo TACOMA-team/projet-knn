@@ -4,7 +4,6 @@ import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
-import fr.inria.tacoma.bft.util.Mass;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -92,7 +91,7 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
         List<MassFunction> masses = knn.stream()
                 .map(p -> getMassFunction(sensorValue, p))
                 .collect(Collectors.toList());
-        return Mass.toConsonant(combination.apply(masses));
+        return combination.apply(masses);
     }
 
 
