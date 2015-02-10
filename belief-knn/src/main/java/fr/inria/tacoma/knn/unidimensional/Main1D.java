@@ -5,10 +5,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
-import fr.inria.tacoma.bft.core.mass.MassFunction;
-import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
-import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
-import fr.inria.tacoma.bft.util.Mass;
 import fr.inria.tacoma.knn.generic.KnnBelief;
 import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
@@ -24,15 +20,26 @@ import java.util.function.Function;
 
 public class Main1D {
 
-    public static final double ALPHA = 0.2;
+    public static final double ALPHA = 0.4;
+    public static final double TRAINING_SET_RATIO = 0.5;
 
     public static void main(String[] args) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-        List<SensorValue> points = getPoints("absence", "absence-motion1.json");
-        points.addAll(getPoints("presence", "presence-motion1.json"));
-        points.sort((p1, p2) -> Double.compare(p1.getValue(), p2.getValue()));
-        points.forEach(p -> p.setValue(Math.abs(p.getValue() - 2048)));
-        showBestMatch(frame, points);
+
+        List<SensorValue> absence = getPoints("absence", "absence-motion1.json");
+        List<SensorValue> presence = getPoints("presence", "presence-motion1.json");
+
+        // extracting cross validation data
+        List<SensorValue> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
+        crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
+
+        //creating training set
+        List<SensorValue> trainingSet = new ArrayList<>();
+        trainingSet.addAll(absence);
+        trainingSet.addAll(presence);
+        trainingSet.forEach(p -> p.setValue(Math.abs(p.getValue() - 2048)));
+
+        showBestMatch(frame, trainingSet, crossValidation);
 //        displayTabsDependingOnK(frame, trainingSet);
 //        displayWithWeakening(frame, trainingSet, 0, 2000);
     }
@@ -106,11 +113,13 @@ public class Main1D {
 
     /**
      * Shows the model having the lowest error depending on K.
-     *  @param frame       frame of discernment
+     * @param frame       frame of discernment
      * @param trainingSet training set on which we apply knn.
+     * @param crossValidation
      */
-    private static void showBestMatch(FrameOfDiscernment frame, List<SensorValue> trainingSet) {
-        KnnBelief<Double> bestModel = getBestKnnBelief(frame, trainingSet);
+    private static void showBestMatch(FrameOfDiscernment frame, List<SensorValue> trainingSet,
+                                      List<SensorValue> crossValidation) {
+        KnnBelief<Double> bestModel = getBestKnnBelief(frame, trainingSet, crossValidation);
         show(bestModel);
     }
 
@@ -124,8 +133,9 @@ public class Main1D {
     }
 
     private static KnnBelief<Double> getBestKnnBelief(FrameOfDiscernment frame,
-                                                      List<SensorValue> trainingSet) {
-        return getBestKnnBelief(frame, trainingSet, trainingSet.size() - 1);
+                                                      List<SensorValue> trainingSet,
+                                                      List<SensorValue> crossValidation) {
+        return getBestKnnBelief(frame, trainingSet, crossValidation, trainingSet.size() - 1);
     }
 
     /**
@@ -138,8 +148,10 @@ public class Main1D {
      *                         of the training set)
      * @return
      */
-    private static KnnBelief<Double> getBestKnnBelief(FrameOfDiscernment frame, List<SensorValue> trainingSet,
-                                              int maxNeighborCount) {
+    private static KnnBelief<Double> getBestKnnBelief(FrameOfDiscernment frame,
+                                                      List<SensorValue> trainingSet,
+                                                      List<SensorValue> crossValidation,
+                                                      int maxNeighborCount) {
         double lowestError = Double.POSITIVE_INFINITY;
         KnnBelief<Double> bestModel = null;
 
@@ -148,28 +160,18 @@ public class Main1D {
             KnnBelief<Double> beliefModel = new KnnBelief<>(trainingSet,
                     neighborCount, ALPHA, frame, KnnUtils::optimizedDuboisAndPrade,
                     (a,b) -> Math.abs(a - b));
-            double error = error(trainingSet, beliefModel);
+            double error = KnnUtils.error(crossValidation, beliefModel);
             if (error < lowestError) {
                 lowestError = error;
                 bestModel = beliefModel;
             }
         }
+        assert bestModel != null;
         System.out.println("lowest error: " + lowestError);
         System.out.println("bestNeighborCount: " + bestModel.getK());
         return bestModel;
     }
 
-
-    private static double error(List<SensorValue> points, SensorBeliefModel model) {
-        return points.stream().mapToDouble(point -> {
-            MassFunction actualMassFunction = model.toMass(point.getValue());
-            MassFunction idealMassFunction = new MassFunctionImpl(model.getFrame());
-            idealMassFunction.set(model.getFrame().toStateSet(point.getLabel()), 1);
-            idealMassFunction.putRemainingOnIgnorance();
-            double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
-            return distance * distance;
-        }).sum();
-    }
 
 //    private static DiscountingBeliefModel generateWeakeningModel(SensorBeliefModel model,
 //                                                                 List<SensorValue> trainingSet) {

@@ -6,10 +6,6 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
-import fr.inria.tacoma.bft.core.mass.MassFunction;
-import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
-import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
-import fr.inria.tacoma.bft.util.Mass;
 import fr.inria.tacoma.knn.generic.KnnBelief;
 import fr.inria.tacoma.knn.generic.Point;
 import fr.inria.tacoma.knn.unidimensional.SensorValue;
@@ -99,7 +95,7 @@ public class Main2D {
             KnnBelief<Coordinate> beliefModel =
                     new KnnBelief<>(points, neighborCount, ALPHA, frame,
                     KnnUtils::optimizedDuboisAndPrade, Coordinate::distance);
-            double error = error(testSample, beliefModel);
+            double error = KnnUtils.error(testSample, beliefModel);
             if (error < lowestError) {
                 lowestError = error;
                 bestModel = beliefModel;
@@ -108,18 +104,6 @@ public class Main2D {
         System.out.println("lowest error: " + lowestError);
         System.out.println("bestNeighborCount: " + bestModel.getK());
         return bestModel;
-    }
-
-
-    private static double error(List<Point<Coordinate>> points, SensorBeliefModel<Coordinate> model) {
-        return points.stream().mapToDouble(point -> {
-            MassFunction actualMassFunction = model.toMass(point.getValue());
-            MassFunction idealMassFunction = new MassFunctionImpl(model.getFrame());
-            idealMassFunction.set(model.getFrame().toStateSet(point.getLabel()), 1);
-            idealMassFunction.putRemainingOnIgnorance();
-            double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
-            return distance * distance;
-        }).sum();
     }
 
 

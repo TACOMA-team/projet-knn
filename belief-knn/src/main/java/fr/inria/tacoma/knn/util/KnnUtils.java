@@ -2,6 +2,10 @@ package fr.inria.tacoma.knn.util;
 
 import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
+import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
+import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
+import fr.inria.tacoma.bft.util.Mass;
+import fr.inria.tacoma.knn.generic.Point;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +56,30 @@ public class KnnUtils {
             optimizedMasses.set(refMassIndex, referenceMass);
         }
         return Combinations.duboisAndPrade(optimizedMasses);
+    }
+
+    /**
+     * Computes an error according to a cross validation set of points and a
+     * given model. The given error is the sum of the squared distance between
+     * the ideal mass function the model should have returned, and the actual
+     * function. The used distance is the Jousselme distance. The "ideal" mass
+     * function is a function with all the mass assigned to the label of the
+     * point.
+     * @param crossValidation list of points to use
+     * @param model model to check
+     * @param <T> type of data used by the model
+     * @return the error
+     */
+    public static <T> double error(List<? extends Point<T>> crossValidation,
+                                   SensorBeliefModel<T> model) {
+        return crossValidation.stream().mapToDouble(point -> {
+            MassFunction actualMassFunction = model.toMass(point.getValue());
+            MassFunction idealMassFunction = new MassFunctionImpl(model.getFrame());
+            idealMassFunction.set(model.getFrame().toStateSet(point.getLabel()), 1);
+            idealMassFunction.putRemainingOnIgnorance();
+            double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
+            return distance * distance;
+        }).sum();
     }
 
 }
