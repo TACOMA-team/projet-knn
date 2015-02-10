@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
+import fr.inria.tacoma.knn.LabelledPoint;
 import fr.inria.tacoma.knn.generic.KnnBelief;
-import fr.inria.tacoma.knn.generic.Point;
 import fr.inria.tacoma.knn.unidimensional.SensorValue;
 import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
@@ -28,14 +28,14 @@ public class Main2D {
         List<SensorValue> presence = getPoints("presence", "presence-motion1.json");
 
         // transforming to 2 dimensions (lists must be ordered by timestamp)
-        List<Point<Coordinate>> absence2D = to2D(absence);
-        List<Point<Coordinate>> presence2D = to2D(presence);
+        List<LabelledPoint<Coordinate>> absence2D = to2D(absence);
+        List<LabelledPoint<Coordinate>> presence2D = to2D(presence);
 
         // extracting cross validation data
-        List<Point<Coordinate>> crossValidationPoints = KnnUtils.extractSubList(absence2D, 0.6);
+        List<LabelledPoint<Coordinate>> crossValidationPoints = KnnUtils.extractSubList(absence2D, 0.6);
         crossValidationPoints.addAll(KnnUtils.extractSubList(presence2D, 0.6));
 
-        List<Point<Coordinate>> trainingSet = new ArrayList<>();
+        List<LabelledPoint<Coordinate>> trainingSet = new ArrayList<>();
         trainingSet.addAll(presence2D);
         trainingSet.addAll(absence2D);
 
@@ -51,8 +51,8 @@ public class Main2D {
      * @param points training set on which we apply knn.
      */
     private static void showBestMatchWithFixedAlpha(StateSet stateSet, FrameOfDiscernment frame,
-                                                    List<Point<Coordinate>> points,
-                                                    List<Point<Coordinate>> testSample) {
+                                                    List<LabelledPoint<Coordinate>> points,
+                                                    List<LabelledPoint<Coordinate>> testSample) {
         show(stateSet, KnnUtils.getBestKnnBelief(frame, points, testSample, ALPHA,
                 Coordinate::distance));
 
@@ -70,15 +70,15 @@ public class Main2D {
 
 
 
-    private static List<Point<Coordinate>> to2D(List<SensorValue> sortedPoints) {
-        List<Point<Coordinate>> points = new ArrayList<>(sortedPoints.size() - 1);
+    private static List<LabelledPoint<Coordinate>> to2D(List<SensorValue> sortedPoints) {
+        List<LabelledPoint<Coordinate>> points = new ArrayList<>(sortedPoints.size() - 1);
         for (int i = 1; i < sortedPoints.size(); i++) {
             SensorValue point = sortedPoints.get(i);
             SensorValue prevPoint = sortedPoints.get(i - 1);
             double absoluteDerivative = Math.abs(point.getValue() - prevPoint.getValue())
                     / (point.getTimestamp() - prevPoint.getTimestamp());
             Coordinate coord = new Coordinate(Math.abs(point.getValue() - 2048), absoluteDerivative);
-            points.add(new Point<>(point.getSensor(), point.getLabel(), point.getTimestamp(),
+            points.add(new LabelledPoint<>(point.getSensor(), point.getLabel(), point.getTimestamp(),
                     coord));
         }
         return points;

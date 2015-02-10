@@ -6,8 +6,8 @@ import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
+import fr.inria.tacoma.knn.LabelledPoint;
 import fr.inria.tacoma.knn.generic.KnnBelief;
-import fr.inria.tacoma.knn.generic.Point;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,7 +73,7 @@ public class KnnUtils {
      * @param <T> type of data used by the model
      * @return the error
      */
-    public static <T> double error(List<? extends Point<T>> crossValidation,
+    public static <T> double error(List<? extends LabelledPoint<T>> crossValidation,
                                    SensorBeliefModel<T> model) {
         return crossValidation.stream().mapToDouble(point -> {
             MassFunction actualMassFunction = model.toMass(point.getValue());
@@ -87,8 +87,8 @@ public class KnnUtils {
 
 
     public static <T> KnnBelief<T> getBestKnnBelief(FrameOfDiscernment frame,
-                                                          List<? extends Point<T>> points,
-                                                          List<? extends Point<T>> crossValidation,
+                                                          List<? extends LabelledPoint<T>> points,
+                                                          List<? extends LabelledPoint<T>> crossValidation,
                                                           double alpha,
                                                           BiFunction<T, T, Double> distance) {
         return KnnUtils.getBestKnnBelief(frame, points, crossValidation, alpha, distance,
@@ -106,8 +106,8 @@ public class KnnUtils {
      * @return
      */
     public static <T> KnnBelief<T> getBestKnnBelief(FrameOfDiscernment frame,
-                                                          List<? extends Point<T>> points,
-                                                          List<? extends Point<T>> crossValidation,
+                                                          List<? extends LabelledPoint<T>> points,
+                                                          List<? extends LabelledPoint<T>> crossValidation,
                                                           double alpha,
                                                           BiFunction<T, T, Double> distance,
                                                           int maxNeighborCount) {

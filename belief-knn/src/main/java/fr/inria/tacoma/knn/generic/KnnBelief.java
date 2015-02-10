@@ -4,6 +4,7 @@ import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
+import fr.inria.tacoma.knn.LabelledPoint;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -17,12 +18,12 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
     private final int k;
     private final double alpha;
     private final FrameOfDiscernment frame;
-    private final List<? extends Point<T>> points;
+    private final List<? extends LabelledPoint<T>> points;
     private final Map<String, Double> gammaProvider;
     Function<List<MassFunction>, MassFunction> combination;
     private BiFunction<T, T, Double> distance;
 
-    public KnnBelief(List<? extends Point<T>> points, int k, double alpha,
+    public KnnBelief(List<? extends LabelledPoint<T>> points, int k, double alpha,
                      FrameOfDiscernment frame,
                      Function<List<MassFunction>, MassFunction> combination,
                      BiFunction<T, T, Double> distance) {
@@ -42,7 +43,7 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
         for (String label : labels) {
             List<T> pointValues = points.stream()
                     .filter(p -> p.getLabel().equals(label))
-                    .map(Point::getValue).collect(Collectors.toList());
+                    .map(LabelledPoint::getValue).collect(Collectors.toList());
             BigDecimal average = BigDecimal.ZERO;
 
             int size = pointValues.size();
@@ -60,7 +61,7 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
         return gammas;
     }
 
-    private List<Point<T>> knn(T value) {
+    private List<LabelledPoint<T>> knn(T value) {
         return points.stream()
                 .sorted((p1,p2) ->
                         Double.compare(distance.apply(p1.getValue(), value), distance.apply(
@@ -68,7 +69,7 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
                 .limit(k).collect(Collectors.toList());
     }
 
-    private MassFunction getMassFunction(T value, Point<T> point) {
+    private MassFunction getMassFunction(T value, LabelledPoint<T> point) {
         MassFunction mass = new MassFunctionImpl(frame);
         double gamma = 1.0 / gammaProvider.get(point.getLabel());
         mass.addToFocal(frame.toStateSet(point.getLabel()),
@@ -87,7 +88,7 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
 
     @Override
     public MassFunction toMass(T sensorValue) {
-        List<Point<T>> knn = knn(sensorValue);
+        List<LabelledPoint<T>> knn = knn(sensorValue);
         List<MassFunction> masses = knn.stream()
                 .map(p -> getMassFunction(sensorValue, p))
                 .collect(Collectors.toList());
