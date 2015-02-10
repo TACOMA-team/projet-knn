@@ -32,6 +32,8 @@ public class Main1D {
         // extracting cross validation data
         List<SensorValue> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
         crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
+        crossValidation.forEach(p -> p.setValue(Math.abs(p.getValue() - 2048)));
+
         //creating training set
         List<SensorValue> trainingSet = new ArrayList<>();
         trainingSet.addAll(absence);
@@ -40,7 +42,6 @@ public class Main1D {
 
         showBestMatch(frame, trainingSet, crossValidation);
 //        displayTabsDependingOnK(frame, trainingSet);
-//        displayWithWeakening(frame, trainingSet, 0, 2000);
     }
 
     private static void displayTabsDependingOnK(FrameOfDiscernment frame,
