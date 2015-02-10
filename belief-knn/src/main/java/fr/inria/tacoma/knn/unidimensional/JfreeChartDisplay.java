@@ -52,9 +52,7 @@ public class JfreeChartDisplay {
         Map<Double, MassFunction> syncMap = Collections.synchronizedMap(massFunctionSet);
         IntStream.range(0, numPoints).parallel()
                 .mapToDouble(x -> min + (x * ((max-min) / numPoints)))
-                .forEach(value -> {
-                    syncMap.put(value, beliefModel.toMass(value));
-                });
+                .forEach(value -> syncMap.put(value, beliefModel.toMass(value)));
 
         return getChartPanel(massFunctionSet, beliefModel.getFrame());
     }

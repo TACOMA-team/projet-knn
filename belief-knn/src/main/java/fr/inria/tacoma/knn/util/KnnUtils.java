@@ -103,7 +103,7 @@ public class KnnUtils {
      * @param points      training set to use
      * @param maxNeighborCount maximum to use for k (the effective max will be limited by the size
      *                         of the training set)
-     * @return
+     * @return the knn belief with the lowest error depending on k
      */
     public static <T> KnnBelief<T> getBestKnnBelief(FrameOfDiscernment frame,
                                                           List<? extends LabelledPoint<T>> points,

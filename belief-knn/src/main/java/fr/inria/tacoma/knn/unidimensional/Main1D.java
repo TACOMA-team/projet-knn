@@ -20,8 +20,9 @@ import java.util.function.Function;
 
 public class Main1D {
 
-    public static final double ALPHA = 0.4;
-    public static final double TRAINING_SET_RATIO = 0.5;
+    public static final double ALPHA = 0.3;
+    public static final double TRAINING_SET_RATIO = 0.6;
+    public static final int SENSOR_VALUE_CENTER = 2048;
 
     public static void main(String[] args) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
@@ -32,13 +33,13 @@ public class Main1D {
         // extracting cross validation data
         List<SensorValue> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
         crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
-        crossValidation.forEach(p -> p.setValue(Math.abs(p.getValue() - 2048)));
+        crossValidation.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
 
         //creating training set
         List<SensorValue> trainingSet = new ArrayList<>();
         trainingSet.addAll(absence);
         trainingSet.addAll(presence);
-        trainingSet.forEach(p -> p.setValue(Math.abs(p.getValue() - 2048)));
+        trainingSet.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
 
         showBestMatch(frame, trainingSet, crossValidation);
 //        displayTabsDependingOnK(frame, trainingSet);
@@ -55,7 +56,7 @@ public class Main1D {
         windowFrame.setVisible(true);
 
 
-        for (int neighborCount = 1; neighborCount <= 120; neighborCount++) {
+        for (int neighborCount = 1; neighborCount <= trainingSet.size(); neighborCount++) {
             KnnBelief<Double>  beliefModel = new KnnBelief<>(trainingSet, neighborCount, ALPHA, frame,
                     KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b));
 
@@ -95,7 +96,7 @@ public class Main1D {
      * Shows the model having the lowest error depending on K.
      * @param frame       frame of discernment
      * @param trainingSet training set on which we apply knn.
-     * @param crossValidation
+     * @param crossValidation set of points used for cross validation
      */
     private static void showBestMatch(FrameOfDiscernment frame, List<SensorValue> trainingSet,
                                       List<SensorValue> crossValidation) {
