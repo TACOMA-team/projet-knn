@@ -53,7 +53,8 @@ public class Main2D {
     private static void showBestMatchWithFixedAlpha(StateSet stateSet, FrameOfDiscernment frame,
                                                     List<Point<Coordinate>> points,
                                                     List<Point<Coordinate>> testSample) {
-        show(stateSet, getBestKnnBelief(frame, points, testSample));
+        show(stateSet, KnnUtils.getBestKnnBelief(frame, points, testSample, ALPHA,
+                Coordinate::distance));
 
     }
 
@@ -67,44 +68,6 @@ public class Main2D {
         windowFrame.setVisible(true);
     }
 
-    private static KnnBelief<Coordinate> getBestKnnBelief(FrameOfDiscernment frame,
-                                              List<Point<Coordinate>> points,
-                                              List<Point<Coordinate>> testSample) {
-        return getBestKnnBelief(frame, points, testSample, points.size() - 1);
-    }
-
-    /**
-     * Finds the model having the lowest error depending on K. This iterate the knn algorithm by
-     * incrementing k and calculating the error. It then return the model with the minimum error.
-     *
-     * @param frame            frame of discernment
-     * @param points      training set to use
-     * @param maxNeighborCount maximum to use for k (the effective max will be limited by the size
-     *                         of the training set)
-     * @return
-     */
-    private static KnnBelief<Coordinate> getBestKnnBelief(FrameOfDiscernment frame,
-                                                          List<Point<Coordinate>> points,
-                                                          List<Point<Coordinate>> testSample,
-                                                          int maxNeighborCount) {
-        double lowestError = Double.POSITIVE_INFINITY;
-        KnnBelief<Coordinate> bestModel = null;
-
-        maxNeighborCount = Math.min(maxNeighborCount, points.size() - 1);
-        for (int neighborCount = 1; neighborCount <= maxNeighborCount; neighborCount++) {
-            KnnBelief<Coordinate> beliefModel =
-                    new KnnBelief<>(points, neighborCount, ALPHA, frame,
-                    KnnUtils::optimizedDuboisAndPrade, Coordinate::distance);
-            double error = KnnUtils.error(testSample, beliefModel);
-            if (error < lowestError) {
-                lowestError = error;
-                bestModel = beliefModel;
-            }
-        }
-        System.out.println("lowest error: " + lowestError);
-        System.out.println("bestNeighborCount: " + bestModel.getK());
-        return bestModel;
-    }
 
 
     private static List<Point<Coordinate>> to2D(List<SensorValue> sortedPoints) {

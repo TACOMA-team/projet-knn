@@ -1,14 +1,17 @@
 package fr.inria.tacoma.knn.util;
 
 import fr.inria.tacoma.bft.combinations.Combinations;
+import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
+import fr.inria.tacoma.knn.generic.KnnBelief;
 import fr.inria.tacoma.knn.generic.Point;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 public class KnnUtils {
 
@@ -80,6 +83,52 @@ public class KnnUtils {
             double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
             return distance * distance;
         }).sum();
+    }
+
+
+    public static <T> KnnBelief<T> getBestKnnBelief(FrameOfDiscernment frame,
+                                                          List<? extends Point<T>> points,
+                                                          List<? extends Point<T>> crossValidation,
+                                                          double alpha,
+                                                          BiFunction<T, T, Double> distance) {
+        return KnnUtils.getBestKnnBelief(frame, points, crossValidation, alpha, distance,
+                points.size() - 1);
+    }
+
+    /**
+     * Finds the model having the lowest error depending on K. This iterate the knn algorithm by
+     * incrementing k and calculating the error. It then return the model with the minimum error.
+     *
+     * @param frame            frame of discernment
+     * @param points      training set to use
+     * @param maxNeighborCount maximum to use for k (the effective max will be limited by the size
+     *                         of the training set)
+     * @return
+     */
+    public static <T> KnnBelief<T> getBestKnnBelief(FrameOfDiscernment frame,
+                                                          List<? extends Point<T>> points,
+                                                          List<? extends Point<T>> crossValidation,
+                                                          double alpha,
+                                                          BiFunction<T, T, Double> distance,
+                                                          int maxNeighborCount) {
+        double lowestError = Double.POSITIVE_INFINITY;
+        KnnBelief<T> bestModel = null;
+
+        maxNeighborCount = Math.min(maxNeighborCount, points.size() - 1);
+        for (int neighborCount = 1; neighborCount <= maxNeighborCount; neighborCount++) {
+            KnnBelief<T> beliefModel =
+                    new KnnBelief<>(points, neighborCount, alpha, frame,
+                            KnnUtils::optimizedDuboisAndPrade, distance);
+            double error = KnnUtils.error(crossValidation, beliefModel);
+            if (error < lowestError) {
+                lowestError = error;
+                bestModel = beliefModel;
+            }
+        }
+        assert bestModel != null;
+        System.out.println("lowest error: " + lowestError);
+        System.out.println("bestNeighborCount: " + bestModel.getK());
+        return bestModel;
     }
 
 }

@@ -32,7 +32,6 @@ public class Main1D {
         // extracting cross validation data
         List<SensorValue> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
         crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
-
         //creating training set
         List<SensorValue> trainingSet = new ArrayList<>();
         trainingSet.addAll(absence);
@@ -119,7 +118,8 @@ public class Main1D {
      */
     private static void showBestMatch(FrameOfDiscernment frame, List<SensorValue> trainingSet,
                                       List<SensorValue> crossValidation) {
-        KnnBelief<Double> bestModel = getBestKnnBelief(frame, trainingSet, crossValidation);
+        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
+                ALPHA, (a,b) -> Math.abs(a - b));
         show(bestModel);
     }
 
@@ -132,45 +132,6 @@ public class Main1D {
         windowFrame.setVisible(true);
     }
 
-    private static KnnBelief<Double> getBestKnnBelief(FrameOfDiscernment frame,
-                                                      List<SensorValue> trainingSet,
-                                                      List<SensorValue> crossValidation) {
-        return getBestKnnBelief(frame, trainingSet, crossValidation, trainingSet.size() - 1);
-    }
-
-    /**
-     * Finds the model having the lowest error depending on K. This iterate the knn algorithm by
-     * incrementing k and calculating the error. It then return the model with the minimum error.
-     *
-     * @param frame            frame of discernment
-     * @param trainingSet      training set to use
-     * @param maxNeighborCount maximum to use for k (the effective max will be limited by the size
-     *                         of the training set)
-     * @return
-     */
-    private static KnnBelief<Double> getBestKnnBelief(FrameOfDiscernment frame,
-                                                      List<SensorValue> trainingSet,
-                                                      List<SensorValue> crossValidation,
-                                                      int maxNeighborCount) {
-        double lowestError = Double.POSITIVE_INFINITY;
-        KnnBelief<Double> bestModel = null;
-
-        maxNeighborCount = Math.min(maxNeighborCount, trainingSet.size() - 1);
-        for (int neighborCount = 1; neighborCount <= maxNeighborCount; neighborCount++) {
-            KnnBelief<Double> beliefModel = new KnnBelief<>(trainingSet,
-                    neighborCount, ALPHA, frame, KnnUtils::optimizedDuboisAndPrade,
-                    (a,b) -> Math.abs(a - b));
-            double error = KnnUtils.error(crossValidation, beliefModel);
-            if (error < lowestError) {
-                lowestError = error;
-                bestModel = beliefModel;
-            }
-        }
-        assert bestModel != null;
-        System.out.println("lowest error: " + lowestError);
-        System.out.println("bestNeighborCount: " + bestModel.getK());
-        return bestModel;
-    }
 
 
 //    private static DiscountingBeliefModel generateWeakeningModel(SensorBeliefModel model,
