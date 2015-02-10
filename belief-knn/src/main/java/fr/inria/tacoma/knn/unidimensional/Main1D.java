@@ -4,28 +4,25 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
-import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
-import fr.inria.tacoma.bft.criteria.Criteria;
-import fr.inria.tacoma.bft.decision.CriteriaDecisionStrategy;
-import fr.inria.tacoma.bft.decision.Decision;
-import fr.inria.tacoma.bft.decision.DecisionStrategy;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
-import fr.inria.tacoma.knn.DiscountingBeliefModel;
-import fr.inria.tacoma.knn.TrainingSet;
+import fr.inria.tacoma.knn.generic.KnnBelief;
+import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
 
 import javax.swing.*;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
-public class Main {
+public class Main1D {
 
     public static final double ALPHA = 0.2;
 
@@ -35,35 +32,33 @@ public class Main {
         points.addAll(getPoints("presence", "presence-motion1.json"));
         points.sort((p1, p2) -> Double.compare(p1.getValue(), p2.getValue()));
         points.forEach(p -> p.setValue(Math.abs(p.getValue() - 2048)));
-        TrainingSet trainingSet = new TrainingSet(points);
-
-        showBestMatch(frame, trainingSet);
+        showBestMatch(frame, points);
 //        displayTabsDependingOnK(frame, trainingSet);
-        displayWithWeakening(frame, trainingSet, 0, 2000);
+//        displayWithWeakening(frame, trainingSet, 0, 2000);
     }
 
-    /**
-     * Display the resulting model when we apply knn and then our weakening algorithm.
-     *
-     * @param frame       frame of discernment on which we are working
-     * @param trainingSet training set used to apply knn
-     * @param min         minimum sensor value
-     * @param max         maximum sensor value
-     */
-    private static void displayWithWeakening(FrameOfDiscernment frame, TrainingSet trainingSet,
-                                             double min, double max) {
-        KnnBelief1D beliefModel = getBestKnnBelief(frame, trainingSet);
-        DiscountingBeliefModel weakened = generateWeakeningModel(beliefModel, trainingSet);
+//    /**
+//     * Display the resulting model when we apply knn and then our weakening algorithm.
+//     *  @param frame       frame of discernment on which we are working
+//     * @param trainingSet training set used to apply knn
+//     * @param min         minimum sensor value
+//     * @param max         maximum sensor value
+//     */
+//    private static void displayWithWeakening(FrameOfDiscernment frame, List<SensorValue> trainingSet,
+//                                             double min, double max) {
+//        KnnBelief<Double> beliefModel = getBestKnnBelief(frame, trainingSet);
+//        DiscountingBeliefModel weakened = generateWeakeningModel(beliefModel, trainingSet);
+//
+//        ChartPanel chartPanel = JfreeChartDisplay.getChartPanel(weakened, 2000, min, max);
+//        JFrame windowFrame = new JFrame();
+//        windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+//        windowFrame.setContentPane(chartPanel);
+//        windowFrame.pack();
+//        windowFrame.setVisible(true);
+//    }
 
-        ChartPanel chartPanel = JfreeChartDisplay.getChartPanel(weakened, 2000, min, max);
-        JFrame windowFrame = new JFrame();
-        windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        windowFrame.setContentPane(chartPanel);
-        windowFrame.pack();
-        windowFrame.setVisible(true);
-    }
-
-    private static void displayTabsDependingOnK(FrameOfDiscernment frame, TrainingSet trainingSet) {
+    private static void displayTabsDependingOnK(FrameOfDiscernment frame,
+                                                List<SensorValue> trainingSet) {
         JFrame windowFrame = new JFrame();
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         JTabbedPane tabbedPane = new JTabbedPane();
@@ -74,8 +69,8 @@ public class Main {
 
 
         for (int neighborCount = 1; neighborCount <= 120; neighborCount++) {
-            KnnBelief1D beliefModel = new KnnBelief1D(trainingSet, neighborCount, ALPHA, frame,
-                    Main::optimizedDuboisAndPrade);
+            KnnBelief<Double>  beliefModel = new KnnBelief<>(trainingSet, neighborCount, ALPHA, frame,
+                    KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b));
 
             JPanel panel = JfreeChartDisplay.getChartPanel(beliefModel, 2000, 0, 2000);
             tabbedPane.addTab("" + neighborCount, panel);
@@ -83,31 +78,6 @@ public class Main {
     }
 
 
-    /**
-     * An hybrid fusion mecanism which apply dempster for every points with the same label, end the
-     * fuse the resulting mass functions with dubois and prade. This allow to perform a very
-     * efficient dubois and prade.
-     *
-     * @param masses masses to fuse
-     * @return fused mass function
-     */
-    private static MassFunction optimizedDuboisAndPrade(List<MassFunction> masses) {
-        List<MassFunction> optimizedMasses = new ArrayList<>(masses);
-        for (int refMassIndex = 0; refMassIndex < optimizedMasses.size(); refMassIndex++) {
-            MassFunction referenceMass = optimizedMasses.get(refMassIndex);
-            for (int j = refMassIndex + 1; j < optimizedMasses.size(); ) {
-                MassFunction mass2 = optimizedMasses.get(j);
-                if (referenceMass.getFocalStateSets().equals(mass2.getFocalStateSets())) {
-                    referenceMass = Combinations.dempster(referenceMass, mass2);
-                    optimizedMasses.remove(j);
-                } else {
-                    j++;
-                }
-            }
-            optimizedMasses.set(refMassIndex, referenceMass);
-        }
-        return Combinations.duboisAndPrade(optimizedMasses);
-    }
 
     /**
      * Parse the given file to extract points. One file is expected to contain only one sensor.
@@ -119,7 +89,7 @@ public class Main {
      */
     private static List<SensorValue> getPoints(String label, String file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
         InputStream resourceAsStream = Thread.currentThread().getContextClassLoader()
                 .getResourceAsStream(file);
         MappingIterator<SensorValue> iterator = mapper.readValues(
@@ -136,24 +106,26 @@ public class Main {
 
     /**
      * Shows the model having the lowest error depending on K.
-     *
-     * @param frame       frame of discernment
+     *  @param frame       frame of discernment
      * @param trainingSet training set on which we apply knn.
      */
-    private static void showBestMatch(FrameOfDiscernment frame, TrainingSet trainingSet) {
-        KnnBelief1D bestModel = getBestKnnBelief(frame, trainingSet);
+    private static void showBestMatch(FrameOfDiscernment frame, List<SensorValue> trainingSet) {
+        KnnBelief<Double> bestModel = getBestKnnBelief(frame, trainingSet);
+        show(bestModel);
+    }
 
-        ChartPanel chartPanel = JfreeChartDisplay.getChartPanel(bestModel, 2000, 0, 2000);
+    private static void show(KnnBelief<Double> model) {
+        ChartPanel chartPanel = JfreeChartDisplay.getChartPanel(model, 2000, 0, 2000);
         JFrame windowFrame = new JFrame();
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         windowFrame.setContentPane(chartPanel);
         windowFrame.pack();
         windowFrame.setVisible(true);
-
     }
 
-    private static KnnBelief1D getBestKnnBelief(FrameOfDiscernment frame, TrainingSet trainingSet) {
-        return getBestKnnBelief(frame, trainingSet, trainingSet.getSize() - 1);
+    private static KnnBelief<Double> getBestKnnBelief(FrameOfDiscernment frame,
+                                                      List<SensorValue> trainingSet) {
+        return getBestKnnBelief(frame, trainingSet, trainingSet.size() - 1);
     }
 
     /**
@@ -166,16 +138,17 @@ public class Main {
      *                         of the training set)
      * @return
      */
-    private static KnnBelief1D getBestKnnBelief(FrameOfDiscernment frame, TrainingSet trainingSet,
+    private static KnnBelief<Double> getBestKnnBelief(FrameOfDiscernment frame, List<SensorValue> trainingSet,
                                               int maxNeighborCount) {
         double lowestError = Double.POSITIVE_INFINITY;
-        KnnBelief1D bestModel = null;
+        KnnBelief<Double> bestModel = null;
 
-        maxNeighborCount = Math.min(maxNeighborCount, trainingSet.getSize() - 1);
+        maxNeighborCount = Math.min(maxNeighborCount, trainingSet.size() - 1);
         for (int neighborCount = 1; neighborCount <= maxNeighborCount; neighborCount++) {
-            KnnBelief1D beliefModel = new KnnBelief1D(trainingSet, neighborCount, ALPHA, frame,
-                    Main::optimizedDuboisAndPrade);
-            double error = error(trainingSet.getPoints(), beliefModel);
+            KnnBelief<Double> beliefModel = new KnnBelief<>(trainingSet,
+                    neighborCount, ALPHA, frame, KnnUtils::optimizedDuboisAndPrade,
+                    (a,b) -> Math.abs(a - b));
+            double error = error(trainingSet, beliefModel);
             if (error < lowestError) {
                 lowestError = error;
                 bestModel = beliefModel;
@@ -198,31 +171,31 @@ public class Main {
         }).sum();
     }
 
-    private static DiscountingBeliefModel generateWeakeningModel(SensorBeliefModel model,
-                                                                 TrainingSet trainingSet) {
-        DecisionStrategy decisionStrategy =
-                new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
-        WeakeningFunction weakeningFunction = new WeakeningFunction();
-        DiscountingBeliefModel discountingBeliefModel =
-                new DiscountingBeliefModel(model, weakeningFunction);
-        trainingSet.getPoints().stream().forEach(point -> {
-
-            Decision decision = decisionStrategy.decide(
-                    discountingBeliefModel.toMass(point.getValue()));
-            StateSet actualDecision = decision.getStateSet();
-            StateSet expectedDecision = model.getFrame().toStateSet(point.getLabel());
-
-            if (!actualDecision.includesOrEquals(expectedDecision)) {
-                System.out.println("bad decision for value: " + point.getValue());
-                double weakening = decision.getConfidence() - 0.5;
-                weakeningFunction.addWeakeningPoint(point.getValue(), weakening,
-                        trainingSet.getStandardDevs().get(point.getLabel()));
-            }
-        });
-
-
-        return discountingBeliefModel;
-    }
+//    private static DiscountingBeliefModel generateWeakeningModel(SensorBeliefModel model,
+//                                                                 List<SensorValue> trainingSet) {
+//        DecisionStrategy decisionStrategy =
+//                new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
+//        WeakeningFunction weakeningFunction = new WeakeningFunction();
+//        DiscountingBeliefModel discountingBeliefModel =
+//                new DiscountingBeliefModel(model, weakeningFunction);
+//        trainingSet.stream().forEach(point -> {
+//
+//            Decision decision = decisionStrategy.decide(
+//                    discountingBeliefModel.toMass(point.getValue()));
+//            StateSet actualDecision = decision.getStateSet();
+//            StateSet expectedDecision = model.getFrame().toStateSet(point.getLabel());
+//
+//            if (!actualDecision.includesOrEquals(expectedDecision)) {
+//                System.out.println("bad decision for value: " + point.getValue());
+//                double weakening = decision.getConfidence() - 0.5;
+//                weakeningFunction.addWeakeningPoint(point.getValue(), weakening,
+//                        trainingSet.getStandardDevs().get(point.getLabel()));
+//            }
+//        });
+//
+//
+//        return discountingBeliefModel;
+//    }
 
     private static class WeakeningFunction implements Function<Double, Double> {
         private Map<Double, Double> alphas = new HashMap<>();

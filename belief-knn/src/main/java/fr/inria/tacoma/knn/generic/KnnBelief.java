@@ -18,12 +18,12 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
     private final int k;
     private final double alpha;
     private final FrameOfDiscernment frame;
-    private final List<Point<T>> points;
+    private final List<? extends Point<T>> points;
     private final Map<String, Double> gammaProvider;
     Function<List<MassFunction>, MassFunction> combination;
     private BiFunction<T, T, Double> distance;
 
-    public KnnBelief(List<Point<T>> points, int k, double alpha,
+    public KnnBelief(List<? extends Point<T>> points, int k, double alpha,
                      FrameOfDiscernment frame,
                      Function<List<MassFunction>, MassFunction> combination,
                      BiFunction<T, T, Double> distance) {
@@ -73,7 +73,7 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
         MassFunction mass = new MassFunctionImpl(frame);
         double gamma = 1.0 / gammaProvider.get(point.getLabel());
         mass.addToFocal(frame.toStateSet(point.getLabel()),
-                alpha * Math.exp(- Math.pow(distance.apply(value, point.getValue()) * gamma, 1)));
+                alpha * Math.exp(-Math.pow(distance.apply(value, point.getValue()) * gamma, 1)));
         mass.putRemainingOnIgnorance();
         return mass;
     }

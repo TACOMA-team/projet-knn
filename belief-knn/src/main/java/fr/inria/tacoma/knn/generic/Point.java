@@ -5,7 +5,7 @@ import fr.inria.tacoma.knn.LabelledPoint;
 
 public class Point<T> extends LabelledPoint {
 
-    private T value;
+    protected T value;
 
 
     public Point(@JsonProperty("sensor") String sensor,
@@ -18,5 +18,9 @@ public class Point<T> extends LabelledPoint {
 
     public T getValue() {
         return value;
+    }
+
+    public void setValue(T value) {
+        this.value = value;
     }
 }
