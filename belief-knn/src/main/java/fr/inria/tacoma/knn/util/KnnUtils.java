@@ -6,8 +6,8 @@ import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
-import fr.inria.tacoma.knn.LabelledPoint;
-import fr.inria.tacoma.knn.generic.KnnBelief;
+import fr.inria.tacoma.knn.core.LabelledPoint;
+import fr.inria.tacoma.knn.core.KnnBelief;
 
 import java.util.ArrayList;
 import java.util.List;

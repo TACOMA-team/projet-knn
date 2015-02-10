@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
-import fr.inria.tacoma.knn.generic.KnnBelief;
+import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
 

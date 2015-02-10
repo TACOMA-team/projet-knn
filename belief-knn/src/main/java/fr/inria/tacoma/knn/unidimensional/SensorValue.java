@@ -1,7 +1,7 @@
 package fr.inria.tacoma.knn.unidimensional;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import fr.inria.tacoma.knn.LabelledPoint;
+import fr.inria.tacoma.knn.core.LabelledPoint;
 
 public class SensorValue extends LabelledPoint<Double> {
 

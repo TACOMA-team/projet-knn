@@ -1,4 +1,4 @@
-package fr.inria.tacoma.knn;
+package fr.inria.tacoma.knn.core;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

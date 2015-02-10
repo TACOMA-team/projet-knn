@@ -1,10 +1,9 @@
-package fr.inria.tacoma.knn.generic;
+package fr.inria.tacoma.knn.core;
 
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
-import fr.inria.tacoma.knn.LabelledPoint;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
