@@ -60,7 +60,7 @@ public class Main1D {
             KnnBelief<Double>  beliefModel = new KnnBelief<>(trainingSet, neighborCount, ALPHA, frame,
                     KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b));
 
-            JPanel panel = JfreeChartDisplay.getChartPanel(beliefModel, 2000, 0, 2000);
+            JPanel panel = JfreeChartDisplay1D.getChartPanel(beliefModel, 2000, 0, 2000);
             tabbedPane.addTab("" + neighborCount, panel);
         }
     }
@@ -106,7 +106,7 @@ public class Main1D {
     }
 
     private static void show(KnnBelief<Double> model) {
-        ChartPanel chartPanel = JfreeChartDisplay.getChartPanel(model, 2000, 0, 2000);
+        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, 0, 2000);
         JFrame windowFrame = new JFrame();
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         windowFrame.setContentPane(chartPanel);

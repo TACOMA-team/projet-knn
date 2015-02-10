@@ -13,7 +13,7 @@ import org.jfree.data.xy.DefaultXYDataset;
 import java.util.*;
 import java.util.stream.IntStream;
 
-public class JfreeChartDisplay {
+public class JfreeChartDisplay1D {
 
     public static ChartPanel getChartPanel(SortedMap<Double, MassFunction> masses,
                                            FrameOfDiscernment frame) {
