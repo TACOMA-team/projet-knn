@@ -43,26 +43,6 @@ public class Main1D {
 //        displayWithWeakening(frame, trainingSet, 0, 2000);
     }
 
-//    /**
-//     * Display the resulting model when we apply knn and then our weakening algorithm.
-//     *  @param frame       frame of discernment on which we are working
-//     * @param trainingSet training set used to apply knn
-//     * @param min         minimum sensor value
-//     * @param max         maximum sensor value
-//     */
-//    private static void displayWithWeakening(FrameOfDiscernment frame, List<SensorValue> trainingSet,
-//                                             double min, double max) {
-//        KnnBelief<Double> beliefModel = getBestKnnBelief(frame, trainingSet);
-//        DiscountingBeliefModel weakened = generateWeakeningModel(beliefModel, trainingSet);
-//
-//        ChartPanel chartPanel = JfreeChartDisplay.getChartPanel(weakened, 2000, min, max);
-//        JFrame windowFrame = new JFrame();
-//        windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-//        windowFrame.setContentPane(chartPanel);
-//        windowFrame.pack();
-//        windowFrame.setVisible(true);
-//    }
-
     private static void displayTabsDependingOnK(FrameOfDiscernment frame,
                                                 List<SensorValue> trainingSet) {
         JFrame windowFrame = new JFrame();
@@ -133,8 +113,8 @@ public class Main1D {
     }
 
 
-
-//    private static DiscountingBeliefModel generateWeakeningModel(SensorBeliefModel model,
+// FIXME rewrite this function
+//    private static DiscountingBeliefModel generateWeakeningModel(SensorBeliefModel<Double> model,
 //                                                                 List<SensorValue> trainingSet) {
 //        DecisionStrategy decisionStrategy =
 //                new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
@@ -150,6 +130,7 @@ public class Main1D {
 //
 //            if (!actualDecision.includesOrEquals(expectedDecision)) {
 //                System.out.println("bad decision for value: " + point.getValue());
+//                //FIXME This weakening is arbitrary
 //                double weakening = decision.getConfidence() - 0.5;
 //                weakeningFunction.addWeakeningPoint(point.getValue(), weakening,
 //                        trainingSet.getStandardDevs().get(point.getLabel()));
