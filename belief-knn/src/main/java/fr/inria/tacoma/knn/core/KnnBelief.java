@@ -65,7 +65,7 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
                 .sorted((p1,p2) ->
                         Double.compare(distance.apply(p1.getValue(), value), distance.apply(
                                 p2.getValue(), value)))
-                .limit(k).collect(Collectors.toList());
+                .limit(k).collect(Collectors.<LabelledPoint<T>>toList());
     }
 
     private MassFunction getMassFunction(T value, LabelledPoint<T> point) {
