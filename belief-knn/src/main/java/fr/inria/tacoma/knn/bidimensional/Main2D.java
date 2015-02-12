@@ -21,6 +21,10 @@ import java.util.List;
 public class Main2D {
 
     public static final double ALPHA = 0.3;
+    public static final double TRAINING_SET_RATIO = 0.6;
+    public static final double MAX_X = 2048.0;
+    public static final double MAX_Y = 2048;
+    public static final int SENSOR_VALUE_CENTER = 512;
 
     public static void main(String[] args) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
@@ -32,8 +36,9 @@ public class Main2D {
         List<LabelledPoint<Coordinate>> presence2D = to2D(presence);
 
         // extracting cross validation data
-        List<LabelledPoint<Coordinate>> crossValidationPoints = KnnUtils.extractSubList(absence2D, 0.6);
-        crossValidationPoints.addAll(KnnUtils.extractSubList(presence2D, 0.6));
+        List<LabelledPoint<Coordinate>> crossValidationPoints = KnnUtils.extractSubList(absence2D,
+                TRAINING_SET_RATIO);
+        crossValidationPoints.addAll(KnnUtils.extractSubList(presence2D, TRAINING_SET_RATIO));
 
         List<LabelledPoint<Coordinate>> trainingSet = new ArrayList<>();
         trainingSet.addAll(presence2D);
@@ -59,8 +64,8 @@ public class Main2D {
     }
 
     private static void show(StateSet stateSet, KnnBelief<Coordinate> model) {
-        ChartPanel chartPanel = JfreeChartDisplay2D.getChartPanel(model, 250, 2000.0,
-                250, 2000.0, stateSet);
+        ChartPanel chartPanel = JfreeChartDisplay2D.getChartPanel(model, 250, MAX_X,
+                250, MAX_Y, stateSet);
         JFrame windowFrame = new JFrame();
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         windowFrame.setContentPane(chartPanel);
@@ -77,7 +82,8 @@ public class Main2D {
             SensorValue prevPoint = sortedPoints.get(i - 1);
             double absoluteDerivative = Math.abs(point.getValue() - prevPoint.getValue())
                     / (point.getTimestamp() - prevPoint.getTimestamp());
-            Coordinate coord = new Coordinate(Math.abs(point.getValue() - 2048), absoluteDerivative);
+            Coordinate coord = new Coordinate(Math.abs(point.getValue() - SENSOR_VALUE_CENTER),
+                    absoluteDerivative);
             points.add(new LabelledPoint<>(point.getSensor(), point.getLabel(), point.getTimestamp(),
                     coord));
         }
