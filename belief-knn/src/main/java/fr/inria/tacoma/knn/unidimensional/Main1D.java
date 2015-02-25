@@ -35,8 +35,7 @@ public class Main1D {
 
         List<SensorValue> absence = getPoints("absence", "absence-motion1.json");
         List<SensorValue> presence = getPoints("presence", "presence-motion1.json");
-        absence = toDerivative(absence);
-        presence = toDerivative(presence);
+        
         absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
         presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
 
