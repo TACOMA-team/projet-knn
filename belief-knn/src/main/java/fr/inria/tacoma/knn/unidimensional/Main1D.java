@@ -134,7 +134,7 @@ public class Main1D {
     }
 
     private static void show(SensorBeliefModel<Double> model) {
-        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, 0, 1024);
+        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, 0, MAX_X);
         JFrame windowFrame = new JFrame();
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         windowFrame.setContentPane(chartPanel);
