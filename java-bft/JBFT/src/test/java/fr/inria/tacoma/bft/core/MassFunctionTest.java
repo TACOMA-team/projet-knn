@@ -95,6 +95,12 @@ public class MassFunctionTest {
     }
 
 	@Test
+	public void getValue_withNonFocalElement_Returns0() {
+		assertMassEquals(getMassWithTotalIgnorance(), 0, "standing");
+	}
+
+
+	@Test
 	public void putRemainingMassOnIgnorance_WithValueAlreadySetForTotalIgnorance_AssignsRightValueToTotalIgnorance() {
 		massFunction.addToFocal(frame.toStateSet("sitting", "standing", "layingDown"), 0.2);
         massFunction.putRemainingOnIgnorance();

@@ -7,6 +7,9 @@ import java.util.Set;
  */
 public interface StateSet extends Comparable<StateSet>{
 
+    /**
+     * @return the frame of discernment used by this state set.
+     */
     FrameOfDiscernment getFrame();
 
     /**

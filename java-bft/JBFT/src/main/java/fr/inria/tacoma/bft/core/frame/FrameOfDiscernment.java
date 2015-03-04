@@ -6,13 +6,32 @@ import fr.inria.tacoma.bft.core.frame.impl.SmallFrameOfDiscernment;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Base class for the belief functions to work. A frame of discernment defines
+ * which are the different state that a mass function will define. This is
+ * often the first class you should use. This abstract class cannot be
+ * instantiated directly and should be used as a factory via newFrame().
+ *
+ * This class is immutable so You can have only one instance for each
+ * real frame of discernment you need.
+ *
+ * The main use of the class is to create the state sets used by the mass
+ * functions.
+ */
 public abstract class FrameOfDiscernment {
 
-    public static final int MAX_SMALL_FRAME_SIZE = 64;
+    private static final int MAX_SMALL_FRAME_SIZE = 64;
     private final List<String> states;
     private final String name;
     private final List<StateSet> stateSets;
 
+    /**
+     * Instantiates a new frame of discernment with the given name and possible
+     * states.
+     * @param name name of the frame
+     * @param elements possible states in our frame of discernment
+     * @return a new frame
+     */
     public static FrameOfDiscernment newFrame(String name, String... elements) {
         if(elements.length > MAX_SMALL_FRAME_SIZE) {
             return new BigFrameOfDiscernment(name, elements);
@@ -22,6 +41,13 @@ public abstract class FrameOfDiscernment {
         }
     }
 
+    /**
+     * Instantiates a new frame of discernment with the given name and possible
+     * states.
+     * @param name name of the frame
+     * @param elements possible states in our frame of discernment
+     * @return a new frame
+     */
     public static FrameOfDiscernment newFrame(String name, List<String> elements) {
         if(elements.size() > MAX_SMALL_FRAME_SIZE) {
             return new BigFrameOfDiscernment(name, elements);
@@ -92,6 +118,9 @@ public abstract class FrameOfDiscernment {
         return this.states.containsAll(elements);
     }
 
+    /**
+     * @return the number of possible states in this frame
+     */
     public int card() {
         return this.states.size();
     }

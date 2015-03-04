@@ -44,7 +44,7 @@ public class LinearSensorModelTest {
 
     @Test
     public void toMassFunctionWithThreeInterpolationPoint_toMassFunction_ReturnsTheRightValue() {
-        SensorBeliefModel model = modelWith3InterpolationPoints();
+        SensorBeliefModel<Double> model = modelWith3InterpolationPoints();
         MassFunction expected = new MassFunctionImpl(frame);
         expected.addToFocal(frame.toStateSet("sitting", "standing"), 0.8);
         expected.addToFocal(frame.toStateSet("sitting", "standing","layingDown"), 0.2);
@@ -60,7 +60,7 @@ public class LinearSensorModelTest {
     }
 
 
-    private SensorBeliefModel modelWith3InterpolationPoints() {
+    private SensorBeliefModel<Double> modelWith3InterpolationPoints() {
         baseModel.addInterpolationPoint(100.0, frame.toStateSet("sitting"), 1.0);
         baseModel.addInterpolationPoint(200.0, frame.toStateSet("sitting", "standing"),  1.0);
         baseModel.addInterpolationPoint(300.0,

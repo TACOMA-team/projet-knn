@@ -25,12 +25,12 @@ public class FusionModelTest {
     }
 
     @Test
-    public void sensorModelWithFusion_firstCalltoMassFunction_ReturnsTheSameAsUnderlyingModel() {
+    public void sensorModelWithFusion_firstCallToMassFunction_ReturnsTheSameAsUnderlyingModel() {
         assertEquals(baseModel.toMass(100.0), fusionModel.toMass(100.0, 0));
     }
 
     @Test
-    public void secondCalltoMassFunction_withNoTimeBetweenEvidences_isEquivalentToDuboisAndPradeCombination() {
+    public void secondCallToMassFunction_withNoTimeBetweenEvidences_isEquivalentToDuboisAndPradeCombination() {
         fusionModel.toMass(100.0, 0); //first call
         MassFunction expected = Combinations.duboisAndPrade(
                 baseModel.toMass(100.0), baseModel.toMass(200.0));
@@ -39,7 +39,7 @@ public class FusionModelTest {
     }
 
     @Test
-    public void secondCalltoMassFunction_withTimeBetweenEvidences_ReturnsRightResult() {
+    public void secondCallToMassFunction_withTimeBetweenEvidences_ReturnsRightResult() {
         fusionModel.toMass(100.0, 0); //first call
         MassFunction expected = new MassFunctionImpl(this.frame);
         expected.addToFocal(this.frame.toStateSet("sitting"), 0.5);
@@ -55,7 +55,7 @@ public class FusionModelTest {
     }
 
     @Test
-    public void toMassFunction_WithoutSensorMeasureAsSecond_ReturnsWeakeanedPreviousFunction() {
+    public void toMassFunction_WithoutSensorMeasureAsSecond_ReturnsDiscountedPreviousFunction() {
         MassFunction firstMass = this.fusionModel.toMass(200.0);
         firstMass.discount(0.5);
         assertEquals(firstMass, this.fusionModel.toMassWithoutValue(0.5));

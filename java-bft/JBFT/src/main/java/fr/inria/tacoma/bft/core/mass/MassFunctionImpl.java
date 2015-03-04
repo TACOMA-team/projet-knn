@@ -2,27 +2,43 @@ package fr.inria.tacoma.bft.core.mass;
 
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
-import gnu.trove.map.hash.TObjectDoubleHashMap;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Set;
 
+/**
+ * Implementation for a mass function. This implementation is built iteratively
+ * by creating an empty mass function and then assigning mass to focal points.
+ */
 public class MassFunctionImpl implements MassFunction {
 
+    /**
+     * Precision used for mass functions. This precision is used in equals.
+     */
     public static final double PRECISION = 10e-12;
 
     private final FrameOfDiscernment frameOfDiscernment;
-    private final TObjectDoubleHashMap<StateSet> focalPoints;
+    private final HashMap<StateSet,Double> focalPoints;
     private double totalAssignedMass = 0.0;
 
+    /**
+     * Creates a new empty MassFunctionImpl.
+     * @param frameOfDiscernment frame of discernment
+     */
     public MassFunctionImpl(FrameOfDiscernment frameOfDiscernment) {
         this.frameOfDiscernment = frameOfDiscernment;
-        this.focalPoints = new TObjectDoubleHashMap<>();
+        this.focalPoints = new HashMap<>();
     }
 
+    /**
+     * Creates a new MassFunctionImpl which is a copy of another MassFunction.
+     * The new function will have the same frame of discernment and focal points.
+     * @param toCopy mass function to copy.
+     */
     public MassFunctionImpl(MassFunction toCopy) {
         this.frameOfDiscernment =toCopy.getFrameOfDiscernment();
-        this.focalPoints = new TObjectDoubleHashMap<>();
+        this.focalPoints = new HashMap<>();
         toCopy.foreachFocalElement(this.focalPoints::put);
         this.totalAssignedMass = toCopy.getTotalAssignedMass();
     }
@@ -38,22 +54,25 @@ public class MassFunctionImpl implements MassFunction {
             throw new IllegalArgumentException(Arrays.toString(elements) + " does not belong to the " +
                     "frame of discernment.");
         }
-        return this.focalPoints.get(this.frameOfDiscernment.toStateSet(elements));
+        return this.get(this.frameOfDiscernment.toStateSet(elements));
     }
 
     @Override
     public double get(StateSet stateSet) {
-        return this.focalPoints.get(stateSet);
+        return this.focalPoints.getOrDefault(stateSet,0.0);
     }
 
     @Override
     public void set(StateSet stateSet, double value) {
-        double oldValue;
+        Double oldValue;
         if(value == 0) {
             oldValue = this.focalPoints.remove(stateSet);
         }
         else {
             oldValue = this.focalPoints.put(stateSet, value);
+        }
+        if(oldValue == null) {
+            oldValue = 0.0;
         }
         this.totalAssignedMass+= value - oldValue;
     }
@@ -65,10 +84,7 @@ public class MassFunctionImpl implements MassFunction {
 
     @Override
     public void foreachFocalElement(FocalElementConsumer consumer) {
-        this.focalPoints.forEachEntry((key, value) -> {
-            consumer.apply(key, value);
-            return true;
-        });
+        this.focalPoints.forEach(consumer::apply);
     }
 
 	/*
@@ -82,7 +98,8 @@ public class MassFunctionImpl implements MassFunction {
                     "(tried to add mass " + value + ".");
         }
         if (value > 0) {
-            this.focalPoints.adjustOrPutValue(stateSet, value, value);
+            double previousValue = this.focalPoints.getOrDefault(stateSet, 0.0);
+            this.focalPoints.put(stateSet, previousValue + value);
             this.totalAssignedMass += value;
         }
     }
@@ -105,7 +122,7 @@ public class MassFunctionImpl implements MassFunction {
     @Override
     public void discount(double coefficient) {
         final double maxedCoef = coefficient > 1.0 ? 1.0 : coefficient;
-        this.focalPoints.transformValues(val -> (1 - maxedCoef) * val);
+        this.focalPoints.replaceAll((key, val) -> (1 - maxedCoef) * val);
         this.addToFocal(this.getFrameOfDiscernment().fullIgnoranceSet(),
                 maxedCoef * this.totalAssignedMass);
     }
@@ -117,7 +134,7 @@ public class MassFunctionImpl implements MassFunction {
         if (sum == 0.0) {
             throw new ArithmeticException("Total mass equals 0. Cannot normalize");
         }
-        this.focalPoints.transformValues(value -> value / sum);
+        this.focalPoints.replaceAll((key, value) -> value / sum);
         this.totalAssignedMass = 1.0;
     }
 
@@ -144,8 +161,9 @@ public class MassFunctionImpl implements MassFunction {
             return false;
         }
         // We have to compare the set with a precision parameter to handle double errors
-        return this.focalPoints.forEachEntry((key, value) -> {
-            double error = (that.focalPoints.get(key) - value) / value;
+        return this.focalPoints.entrySet().stream().allMatch(entry -> {
+            Double value = entry.getValue();
+            double error = (that.focalPoints.get(entry.getKey()) - value) / value;
             return Math.abs(error) < PRECISION;
         });
     }
@@ -162,13 +180,14 @@ public class MassFunctionImpl implements MassFunction {
         StringBuilder builder = new StringBuilder();
         builder.append("{\"focals\": [");
 
-        this.focalPoints.forEachEntry((key, value) -> {
+        this.focalPoints.entrySet().stream().forEach(entry -> {
+            StateSet key = entry.getKey();
+            Double value = entry.getValue();
             builder.append("{\"set\": ")
                     .append(key.toString())
                     .append(", \"value\": ")
                     .append(value)
                     .append("},");
-            return true;
         });
         return builder.replace(builder.length() - 1, builder.length(), " ")
                 .append("]}")

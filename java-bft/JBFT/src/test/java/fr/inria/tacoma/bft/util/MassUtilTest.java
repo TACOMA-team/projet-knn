@@ -67,7 +67,7 @@ public class MassUtilTest {
     }
 
     @Test
-    public void scalarProduct_isSymetric() {
+    public void scalarProduct_isSymmetric() {
         assertEquals(Mass.scalarProduct(mass2, mass3), Mass.scalarProduct(mass3, mass2),
                      MassFunctionImpl.PRECISION);
     }
@@ -93,6 +93,19 @@ public class MassUtilTest {
         assertEquals(Mass.jousselmeDistance(mass2, sittingMass),
                      Mass.jousselmeDistance(sittingMass, mass2),
                      MassFunctionImpl.PRECISION);
+    }
+
+    @Test
+    public void jousselmeDistance_doesNotReturnNaNForWeirdMassFunctions() {
+        //This bug was encountered while using jousselme distance. due to a routnding error
+        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
+        MassFunction weirdMass = new MassFunctionImpl(frame);
+        weirdMass.set(frame.toStateSet("presence"), 0.9999999955635855);
+        weirdMass.set(frame.toStateSet("absence"), 1.4139099912046117E-21);
+        weirdMass.set(frame.toStateSet("presence", "absence"), 4.4364146933197785E-9);
+        MassFunction presenceMass = new MassFunctionImpl(frame);
+        presenceMass.set(frame.toStateSet("presence"), 1.0);
+        assertFalse(Double.isNaN(Mass.jousselmeDistance(weirdMass, presenceMass)));
     }
 
     /*

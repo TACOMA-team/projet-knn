@@ -26,6 +26,10 @@ public class LinearSensorBeliefModel implements SensorBeliefModel<Double> {
     private final FrameOfDiscernment frame;
     private NavigableMap<Double, MassFunction> interpolationPoints;
 
+    /**
+     * Creates a new LinearSensorBeliefModel with the given frame of discernment.
+     * @param frame frame of discernment for this model
+     */
     public LinearSensorBeliefModel(FrameOfDiscernment frame) {
         this.frame = frame;
         this.interpolationPoints = new TreeMap<>();
@@ -33,6 +37,15 @@ public class LinearSensorBeliefModel implements SensorBeliefModel<Double> {
 
     /*
      * model building
+     */
+
+    /**
+     * Adds an interpolation point for this model. It sets the mass assigned
+     * to a state set for a given sensor value. This function is like
+     * addInterpolationFunction() but change the value for only one StateSet.
+     * @param sensorValue sensor value at which the interpolation point is
+     * @param set set for which we set the mass
+     * @param beliefValue mass for the given set
      */
     public void addInterpolationPoint(double sensorValue, StateSet set, double beliefValue) {
         MassFunction massFunction = this.interpolationPoints.get(sensorValue);
@@ -43,6 +56,14 @@ public class LinearSensorBeliefModel implements SensorBeliefModel<Double> {
         massFunction.set(set, beliefValue);
     }
 
+    /**
+     * Puts a mass function at a sensor value. This set the mass function
+     * associated with a sensor value. After calling this function, calling
+     * toMass(sensorValue) with the same sensorValue should return this mass
+     * function.
+     * @param sensorValue sensor value at which the interpolation function is
+     * @param massFunction mass function to use as interpolation point
+     */
     public void addInterpolationFunction(double sensorValue, MassFunction massFunction) {
         MassFunction massCopy = new MassFunctionImpl(massFunction);
         this.interpolationPoints.put(sensorValue, massCopy);

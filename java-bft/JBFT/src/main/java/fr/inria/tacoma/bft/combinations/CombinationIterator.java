@@ -1,4 +1,4 @@
-package fr.inria.tacoma.bft.combinations.internal;
+package fr.inria.tacoma.bft.combinations;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -6,14 +6,14 @@ import java.util.List;
 import java.util.Stack;
 import java.util.stream.Collectors;
 
-/*
+/**
  * This iterator takes a list of collections. It then returns every
  * possible tuple when picking one element in every collection.
  *
  * For instance, if the iterator was built with [[1,2,3],[4,5]] as list
  * of collections, it will return [1,4], [1,5], [2,4] and so on.
  */
-public class CombinationIterator<T> implements Iterator<List<T>> {
+class CombinationIterator<T> implements Iterator<List<T>> {
 
     private final List<Collection<T>> elements;
     private final List<Iterator<T>> iterators;

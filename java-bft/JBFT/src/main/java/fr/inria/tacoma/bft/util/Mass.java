@@ -54,8 +54,12 @@ public final class Mass {
      * @return distance between the two mass functions.
      */
     public static double jousselmeDistance(MassFunction mass1, MassFunction mass2) {
-        return Math.sqrt((scalarProduct(mass1,mass1) + scalarProduct(mass2, mass2)
-                - 2.0 * scalarProduct(mass1, mass2)) / 2) ;
+        double squared = (scalarProduct(mass1, mass1) + scalarProduct(mass2, mass2)
+                - 2.0 * scalarProduct(mass1, mass2)) / 2;
+        if(squared < 0) { //There was a rounding error in the scalar product, the result is really close to 0
+            squared = 0;
+        }
+        return Math.sqrt(squared) ;
     }
 
     /**
@@ -99,9 +103,12 @@ public final class Mass {
 
     /**
      * Checks if a mass function is consonant. A consonant mass function
-     * contains only focal elements which are nested.
-     * @param massFunction
-     * @return
+     * contains only focal elements which are nested. For instance, a mass
+     * function such as {["presence"] -> 70 % , ["absence"] : 30 %} is not
+     * consonnant but {["presence", "absence"] -> 60 % , ["presence"] : 40 %}
+     * is.
+     * @param massFunction mass function to use
+     * @return true if the mass function is consonant.
      */
     public static boolean isConsonant(MassFunction massFunction) {
         List<StateSet> list = new ArrayList<>(massFunction.getFocalStateSets());

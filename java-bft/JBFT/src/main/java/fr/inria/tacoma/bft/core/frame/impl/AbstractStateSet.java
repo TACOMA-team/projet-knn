@@ -5,7 +5,12 @@ import fr.inria.tacoma.bft.core.frame.StateSet;
 
 import java.util.Set;
 
-public abstract class AbstractStateSet implements StateSet {
+
+/**
+ * Base class for state sets. This class implements the common features
+ * which are not implementation specific.
+ */
+abstract class AbstractStateSet implements StateSet {
 
     private final FrameOfDiscernment frame;
 

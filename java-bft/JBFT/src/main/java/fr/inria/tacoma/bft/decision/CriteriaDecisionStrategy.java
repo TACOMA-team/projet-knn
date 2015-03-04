@@ -28,6 +28,15 @@ public class CriteriaDecisionStrategy implements DecisionStrategy {
     private final double plausibilityThreshold;
     private final Criterion confidenceFun;
 
+    /**
+     * Creates a new CriteriaDecisionStrategy. This constructor takes the three
+     * thresholds and which criterion to use to compute the confidence percentage
+     * in the Decision.
+     * @param beliefThreshold minimum for the belief
+     * @param betPThreshold minimum for the betP
+     * @param PlausibilityThreshold minimum for the plausibility
+     * @param confidenceFun function which will be used to compute the confidence
+     */
     public CriteriaDecisionStrategy(double beliefThreshold, double betPThreshold,
                                    double PlausibilityThreshold, Criterion confidenceFun) {
         this.beliefThreshold = beliefThreshold;

@@ -8,7 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class BigIntegerStateSet extends AbstractStateSet implements StateSet {
+class BigIntegerStateSet extends AbstractStateSet implements StateSet {
 
     private final BigInteger setId;
 

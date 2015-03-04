@@ -8,7 +8,7 @@
     <parent>
         <groupId>fr.inria.tacoma</groupId>
         <artifactId>jbft-parent</artifactId>
-        <version>0.2-SNAPSHOT</version>
+        <version>0.2.1</version>
         <relativePath>..</relativePath>
     </parent>
     <artifactId>JBFT-perf</artifactId>

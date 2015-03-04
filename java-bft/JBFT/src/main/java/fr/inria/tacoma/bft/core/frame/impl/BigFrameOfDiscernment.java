@@ -13,6 +13,7 @@ import java.util.List;
  */
 public class BigFrameOfDiscernment extends FrameOfDiscernment {
 
+
     public BigFrameOfDiscernment(String name, String... elements) {
         super(name, elements);
     }
@@ -30,7 +31,7 @@ public class BigFrameOfDiscernment extends FrameOfDiscernment {
         }
         BigInteger elementSetId = elements.stream()
                 .map(str -> BigInteger.ONE.shiftLeft(this.getStates().indexOf(str)))
-                .reduce(BigInteger.ZERO, (a, b) -> a.add(b));
+                .reduce(BigInteger.ZERO, BigInteger::add);
         return new BigIntegerStateSet(this, elementSetId);
     }
 
