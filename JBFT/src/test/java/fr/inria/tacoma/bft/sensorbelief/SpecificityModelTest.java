@@ -29,7 +29,7 @@ public class SpecificityModelTest {
 
 
     @Test
-    public void sensorModelWithTemporization_firstCalltoMassFunction_ReturnsTheSameAsUnderlyingModel() {
+    public void sensorModelWithTemporization_firstCallToMassFunction_ReturnsTheSameAsUnderlyingModel() {
         assertEquals(specificityModel.toMass(100.0), specificityModel.toMass(100.0, 0));
     }
 
@@ -57,7 +57,7 @@ public class SpecificityModelTest {
     }
 
     @Test
-    public void toMassFunction_WithoutSensorMeasureAsSecond_ReturnsWeakeanedPreviousFunction() {
+    public void toMassFunction_WithoutSensorMeasureAsSecond_ReturnsDiscountedPreviousFunction() {
         MassFunction firstMass = this.specificityModel.toMass(200.0);
         firstMass.discount(0.5);
         assertEquals(firstMass, this.specificityModel.toMassWithoutValue(

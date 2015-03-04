@@ -93,6 +93,9 @@ public class FusionSensorBeliefModel<T> implements TimeDependentSensorBeliefMode
         return underlyingModel.getFrame();
     }
 
+    /**
+     * @return the model used by this fusion model.
+     */
     public SensorBeliefModel getUnderlyingModel() {
         return underlyingModel;
     }

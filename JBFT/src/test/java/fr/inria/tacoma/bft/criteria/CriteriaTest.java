@@ -103,9 +103,9 @@ public class CriteriaTest {
     }
 
 
-    private void assertCriterionEquals(Criterion criterion, MassFunction mass,
+    private static  void assertCriterionEquals(Criterion criterion, MassFunction mass,
                                        double expected, String... states) {
-        assertEquals(expected, criterion.apply(massFunction, frame.toStateSet(states)),
+        assertEquals(expected, criterion.apply(mass, mass.getFrameOfDiscernment().toStateSet(states)),
                 MassFunctionImpl.PRECISION);
     }
 }

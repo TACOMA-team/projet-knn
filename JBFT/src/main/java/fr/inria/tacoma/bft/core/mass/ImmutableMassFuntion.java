@@ -5,10 +5,19 @@ import fr.inria.tacoma.bft.core.frame.StateSet;
 
 import java.util.Set;
 
+/**
+ * A mass function which is immutable. It throws UnsupportedOperationException
+ * when trying to modify it. It is used to wrap a mass function when you have
+ * to return it and want to be sure it is not modified afterward.
+ */
 public class ImmutableMassFuntion implements MassFunction {
 
-    MassFunction innerMass;
+    private MassFunction innerMass;
 
+    /**
+     * Creates a new immutable mass function from another mass function.
+     * @param mass mass function which will be wrapped by this
+     */
     public ImmutableMassFuntion(MassFunction mass) {
         this.innerMass = mass;
     }

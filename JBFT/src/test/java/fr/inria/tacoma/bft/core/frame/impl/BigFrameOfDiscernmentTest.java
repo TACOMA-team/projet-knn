@@ -43,7 +43,7 @@ public class BigFrameOfDiscernmentTest {
     }
 
     @Test
-    public void StateSet_inclureOrEqualsWithIncludedSet_ReturnsTrue() {
+    public void StateSet_includesOrEqualsWithIncludedSet_ReturnsTrue() {
         assertTrue(frame.toStateSet("1","2","49").includesOrEquals(frame.toStateSet("1","49")));
     }
 

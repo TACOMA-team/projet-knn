@@ -5,7 +5,17 @@ import fr.inria.tacoma.bft.core.frame.StateSet;
 
 import java.util.Set;
 
+/**
+ * Interface for mass functions. Mass function in the library do not need
+ * to be be normalized. Although, some convenience  methods (like
+ * putRemainingOnIgnorance)assume that the caller wants the function to be be
+ * normalized.
+ */
 public interface MassFunction {
+
+    /**
+     * @return the frame of discernment used by this MassFunction
+     */
     FrameOfDiscernment getFrameOfDiscernment();
 
     /**
@@ -81,7 +91,7 @@ public interface MassFunction {
     double getTotalAssignedMass();
 
     /**
-     * Weakens the mass function. The weakening operation removes mass to every
+     * Discounts the mass function. The discounting operation removes mass to every
      * focal points and transmit this mass to the full ignorance set. After
      * applying the weakening the new mass m2 should be (with Ω the full
      * ignorance set, α the coefficient, m the mass function before applying

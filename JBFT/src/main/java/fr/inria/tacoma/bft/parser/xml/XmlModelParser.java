@@ -28,6 +28,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Parser for the xml representation of a sensor belief model.
+ */
 public class XmlModelParser {
 
     /**
@@ -102,8 +105,8 @@ public class XmlModelParser {
 
     /**
      * Parses a single sensor belief.
-     * @param beliefElement
-     * @param frame
+     * @param beliefElement belief xml tag
+     * @param frame frame of discernment for the current model
      * @return a new sensor belief
      */
     private static SensorBeliefModel parseSensorBelief(Element beliefElement,
@@ -174,7 +177,7 @@ public class XmlModelParser {
     /**
      * Parses the frame of discernment used in the xml document.
      * @param document xml document to parse
-     * @return
+     * @return the frame of discernment for the model being parsed
      */
     private static FrameOfDiscernment parseFrame(Document document) {
         Element frameNode = (Element)document.getElementsByTagName("frame").item(0);

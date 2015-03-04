@@ -17,9 +17,9 @@ public interface TimeDependentSensorBeliefModel<T> extends SensorBeliefModel<T> 
      * toMass(double), the real time will not be used and the function
      * will return a mass function as if elapsedTimeSeconds seconds have passed
      * since the last call.
-     * @param sensorValue
-     * @param elapsedTimeSeconds
-     * @return
+     * @param sensorValue new sensor value to use
+     * @param elapsedTimeSeconds time in seconds since the last sensor value
+     * @return a mass function representing the belief given by the sensor value
      */
     MassFunction toMass(T sensorValue, double elapsedTimeSeconds);
 
@@ -30,6 +30,7 @@ public interface TimeDependentSensorBeliefModel<T> extends SensorBeliefModel<T> 
      * If the model does not use previous sensor value, it will probably be a
      * vacuous mass function (all mass on full ignorance set). This is useful if
      * the model uses previous sensor value in order to get the current mass.
+     * @param elapsedTimeSeconds time since the last sensor value.
      * @return mass function if there are no sensor value
      */
     MassFunction toMassWithoutValue(double elapsedTimeSeconds);

@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class LongStateSet extends AbstractStateSet implements StateSet {
+class LongStateSet extends AbstractStateSet implements StateSet {
 
     private final long setId;
 

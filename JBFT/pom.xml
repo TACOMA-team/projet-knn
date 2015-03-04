@@ -5,7 +5,7 @@
     <parent>
         <groupId>fr.inria.tacoma</groupId>
         <artifactId>jbft-parent</artifactId>
-        <version>0.2-SNAPSHOT</version>
+        <version>0.2.1</version>
         <relativePath>..</relativePath>
     </parent>
 
@@ -17,12 +17,6 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>net.sf.trove4j</groupId>
-            <artifactId>trove4j</artifactId>
-            <version>3.0.3</version>
-        </dependency>
-
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -51,7 +45,7 @@
                 <configuration>
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
-                        <Private-Package>gnu.trove.*; fr.inria.tacoma.bft.*</Private-Package>
+                        <Private-Package>fr.inria.tacoma.bft.*</Private-Package>
                         <Export-Package>!fr.inria.tacoma.bft.parser.xml.mapping,
                             !fr.inria.tacoma.bft.combinations.internal,
                             fr.inria.tacoma.bft.*;</Export-Package>

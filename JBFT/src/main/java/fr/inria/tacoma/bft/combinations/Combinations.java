@@ -1,6 +1,5 @@
 package fr.inria.tacoma.bft.combinations;
 
-import fr.inria.tacoma.bft.combinations.internal.CombinationIterator;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
@@ -10,7 +9,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final  class Combinations {
+/**
+ * Util class which contains usual combinations rules. This class only contains
+ * static functions and can not be instantiated or inherited.
+ */
+public final class Combinations {
 
     private Combinations(){}
 
@@ -108,7 +111,7 @@ public final  class Combinations {
         while (iterator.hasNext()) {
             List<StateSet> stateSets = iterator.next();
 
-            StateSet conjunction = stateSets.stream().reduce((a,b) -> a.conjunction(b)).get();
+            StateSet conjunction = stateSets.stream().reduce(StateSet::conjunction).get();
             double mass = 1;
             for (int i = 0; i < massFunctions.size(); i++) {
                 mass *= massFunctions.get(i).get(stateSets.get(i));
@@ -118,7 +121,7 @@ public final  class Combinations {
                 combination.addToFocal(conjunction, mass);
             }
             else {
-                StateSet disjunction = stateSets.stream().reduce((a,b)->a.disjunction(b)).get();
+                StateSet disjunction = stateSets.stream().reduce(StateSet::disjunction).get();
                 combination.addToFocal(disjunction, mass);
             }
         }

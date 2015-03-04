@@ -22,7 +22,7 @@ import fr.inria.tacoma.bft.util.Mass;
  */
 public class SpecificitySensorBeliefModel<T> implements TimeDependentSensorBeliefModel<T> {
 
-    private SensorBeliefModel model;
+    private SensorBeliefModel<T> model;
     private MassFunction oldEvidence;
     private double oldTimeStamp = 0;
     private double maxTime;
@@ -35,11 +35,14 @@ public class SpecificitySensorBeliefModel<T> implements TimeDependentSensorBelie
      * @param model underlying model used to compute new mass functions
      * @param maxTime duration for a mass function
      */
-    public SpecificitySensorBeliefModel(SensorBeliefModel model, double maxTime) {
+    public SpecificitySensorBeliefModel(SensorBeliefModel<T> model, double maxTime) {
         this.model = model;
         this.maxTime = maxTime;
     }
 
+    /**
+     * @return the underlying model used by the SpecificitySensorBeliefModel
+     */
     public SensorBeliefModel getUnderLyingModel() {
         return model;
     }
