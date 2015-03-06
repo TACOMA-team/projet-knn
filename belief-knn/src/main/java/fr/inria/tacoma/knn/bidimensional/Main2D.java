@@ -28,8 +28,10 @@ public class Main2D {
 
     public static void main(String[] args) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-        List<SensorValue> absence = getPoints("absence", "absence-motion1.json");
-        List<SensorValue> presence = getPoints("presence", "presence-motion1.json");
+        List<SensorValue> absence = getPoints("absence",
+                "samples/sample-1/sensor-1/absence-motion1.json");
+        List<SensorValue> presence = getPoints("presence",
+                "samples/sample-1/sensor-1/presence-motion1.json");
 
         // transforming to 2 dimensions (lists must be ordered by timestamp)
         List<LabelledPoint<Coordinate>> absence2D = to2D(absence);

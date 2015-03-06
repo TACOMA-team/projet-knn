@@ -33,9 +33,13 @@ public class Main1D {
     public static void main(String[] args) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
 
-        List<SensorValue> absence = getPoints("absence", "absence-motion1.json");
-        List<SensorValue> presence = getPoints("presence", "presence-motion1.json");
-        
+        String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
+        String presenceFile = "samples/sample-1/sensor-2/presence-motion2.json";
+        List<SensorValue> absence = getPoints("absence", absenceFile);
+        List<SensorValue> presence = getPoints("presence", presenceFile);
+
+        System.out.println("using " + absenceFile + " for absence and " + presenceFile + " for presence");
+
         absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
         presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
 
