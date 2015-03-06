@@ -81,7 +81,7 @@ public class KnnUtils {
             idealMassFunction.set(model.getFrame().toStateSet(point.getLabel()), 1);
             idealMassFunction.putRemainingOnIgnorance();
             double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
-            return distance * distance;
+            return distance * distance / crossValidation.size();
         }).sum();
     }
 
