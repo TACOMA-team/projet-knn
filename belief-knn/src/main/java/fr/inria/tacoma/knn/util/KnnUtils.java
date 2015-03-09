@@ -22,12 +22,12 @@ public class KnnUtils {
      * list. It is useful to split a list between the learning set and the
      * cross validation set.
      * @param list list to split
-     * @param ratio ratio of the list to keep.
+     * @param keepRatio ratio of the list to keep.
      * @return the extracted list.
      */
-    public static <T> List<T> extractSubList(List<T> list, double ratio) {
-        assert ratio < 1.0;
-        List<T> subList = list.subList((int)((list.size() - 1) * ratio), list.size() - 1);
+    public static <T> List<T> extractSubList(List<T> list, double keepRatio) {
+        assert keepRatio < 1.0;
+        List<T> subList = list.subList((int)((list.size() - 1) * keepRatio), list.size() - 1);
         List<T> extracted = new ArrayList<>();
         extracted.addAll(subList);
         subList.clear();
