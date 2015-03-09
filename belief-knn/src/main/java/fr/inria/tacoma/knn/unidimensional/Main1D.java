@@ -28,7 +28,6 @@ public class Main1D {
     public static final double ALPHA = 0.3;
     public static final double TRAINING_SET_RATIO = 0.6;
     public static final int SENSOR_VALUE_CENTER = 2048;
-    public static final int MAX_X = 2000;
 
     public static void main(String[] args) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
@@ -38,7 +37,8 @@ public class Main1D {
         List<SensorValue> absence = getPoints("absence", absenceFile);
         List<SensorValue> presence = getPoints("presence", presenceFile);
 
-        System.out.println("using " + absenceFile + " for absence and " + presenceFile + " for presence");
+        System.out.println(
+                "using " + absenceFile + " for absence and " + presenceFile + " for presence");
 
         absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
         presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
@@ -52,9 +52,12 @@ public class Main1D {
         trainingSet.addAll(absence);
         trainingSet.addAll(presence);
 
-        showBestMatch(frame, trainingSet, crossValidation);
+        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
+                ALPHA, (a,b) -> Math.abs(a - b));
+        show(bestModel, trainingSet);
 //        displayTabsDependingOnK(frame, trainingSet);
 //        showBestMatchWithWeakening(frame, trainingSet, crossValidation);
+        showErrors(bestModel, crossValidation);
     }
 
     private static List<SensorValue> toDerivative(List<SensorValue> sortedPoints) {
@@ -75,7 +78,7 @@ public class Main1D {
                                                    List<SensorValue> crossValidation) {
         KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
                 ALPHA, (a,b) -> Math.abs(a - b));
-        show(generateWeakeningModel(bestModel, crossValidation));
+        show(generateWeakeningModel(bestModel, crossValidation), trainingSet);
     }
 
     private static void displayTabsDependingOnK(FrameOfDiscernment frame,
@@ -88,12 +91,15 @@ public class Main1D {
         windowFrame.setSize(800, 500);
         windowFrame.setVisible(true);
 
+        double min = trainingSet.stream().mapToDouble(SensorValue::getValue).min().getAsDouble();
+        double max = trainingSet.stream().mapToDouble(SensorValue::getValue).max().getAsDouble();
+        double margin = (max - min) * 0.1;
 
         for (int neighborCount = 1; neighborCount <= trainingSet.size(); neighborCount++) {
             KnnBelief<Double>  beliefModel = new KnnBelief<>(trainingSet, neighborCount, ALPHA, frame,
                     KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b));
 
-            JPanel panel = JfreeChartDisplay1D.getChartPanel(beliefModel, 2000, 0, MAX_X);
+            JPanel panel = JfreeChartDisplay1D.getChartPanel(beliefModel, 2000, min - margin, max + margin);
             tabbedPane.addTab("" + neighborCount, panel);
         }
     }
@@ -133,11 +139,14 @@ public class Main1D {
                                       List<SensorValue> crossValidation) {
         KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
                 ALPHA, (a,b) -> Math.abs(a - b));
-        show(bestModel);
+        show(bestModel, trainingSet);
     }
 
-    private static void show(SensorBeliefModel<Double> model) {
-        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, 0, MAX_X);
+    private static void show(SensorBeliefModel<Double> model, List<SensorValue> points) {
+        double min = points.stream().mapToDouble(SensorValue::getValue).min().getAsDouble();
+        double max = points.stream().mapToDouble(SensorValue::getValue).max().getAsDouble();
+        double margin = (max - min) * 0.1;
+        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, min - margin , max + margin);
         JFrame windowFrame = new JFrame();
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         windowFrame.setContentPane(chartPanel);
@@ -172,6 +181,29 @@ public class Main1D {
 
         return discountingBeliefModel;
     }
+
+    private static void showErrors(SensorBeliefModel<Double> model,
+                                   List<SensorValue> crossValidation) {
+        DecisionStrategy decisionStrategy =
+                new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
+        int errorCount = 0;
+
+        for (SensorValue sensorValue : crossValidation) {
+            Decision decision = decisionStrategy.decide(
+                    model.toMass(sensorValue.getValue()));
+            StateSet actualDecision = decision.getStateSet();
+            StateSet expectedDecision = model.getFrame().toStateSet(sensorValue.getLabel());
+
+            if (!actualDecision.includesOrEquals(expectedDecision)) {
+                //System.out.println("bad decision for value: " + sensorValue.getValue());
+                errorCount++;
+            }
+        }
+        System.out.println(errorCount + " errors out of " + crossValidation.size()
+                + " (" + (double)errorCount * 100 / crossValidation.size() +" %) tested point" +
+                " with decision algorithm.");
+    }
+
 
     /**
      * Generate a map which gives the standard deviation for each label in the training set.
