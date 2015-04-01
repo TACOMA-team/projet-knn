@@ -26,6 +26,8 @@ public class Main {
                                       // 2 : Ecrit dans le fichier "Result.txt" l'erreur en fonction de alpha,k
                                       // 3 : Cherche les meilleures k et alpha pour toutes les features
                                       // 4 : Cherche les meilleures k et alpha pour une feature avec le gradient
+                                      // 5 : Cherche les meilleures k et alpha pour toutes les features avec le gradient
+    
 
     // Choix des variables (Modes 1 et 2) :
     public static final int DIM = 2; // Dimension 1 ou 2
@@ -56,6 +58,9 @@ public class Main {
         if (MODE == 3)
             TestAll() ;
         else {
+            if (MODE == 5)
+                SuperSayen() ;
+        else {
             if (DIM == 1) {
                 Main1D Hati = new Main1D(PRESENCE, ABSENCE, PRESENCE_TEST, ABSENCE_TEST, ALPHA, K, FUNC, ALPHA_STEP, K_STEP, K_MAX, GAMMA1, GAMMA2, MODE, OPTION, SENSOR_VALUE_CENTER, MAX_X) ;
                 Hati.main1D();
@@ -64,7 +69,7 @@ public class Main {
                 Main2D Hati = new Main2D(PRESENCE, ABSENCE, PRESENCE_TEST, ABSENCE_TEST, ALPHA, K, FUNC, ALPHA_STEP, K_STEP, K_MAX, GAMMA1, GAMMA2, MODE, OPTION, OPTION2, SENSOR_VALUE_CENTER, MAX_X, MAX_Y) ;
                 Hati.main2D();
             }
-        }
+        }}
     }
 
     // Cherche le meilleur k et alpha pour toutes les features et toutes les fonctions de distance possibles
@@ -80,6 +85,27 @@ public class Main {
                 for (int func = 0 ; func < NB_FUNC ; func++){
                     Main2D Hati = new Main2D(PRESENCE, ABSENCE, PRESENCE_TEST, ABSENCE_TEST, ALPHA, K, func, ALPHA_STEP, K_STEP, K_MAX, GAMMA1, GAMMA2, MODE, opt, opt2, SENSOR_VALUE_CENTER, MAX_X, MAX_Y) ;
                     Hati.main2D();
+                }
+            }
+        }
+    }
+    
+    // Cherche le meilleur k et alpha pour toutes les features et toutes les fonctions de distance possibles avec le gradient
+    public static void SuperSayen() throws IOException {
+        for (int opt = 0 ; opt < NB_OPTION ; opt++){
+            for (int func = 0 ; func < NB_FUNC ; func++){
+                Main1D Hati = new Main1D(PRESENCE, ABSENCE, PRESENCE_TEST, ABSENCE_TEST, ALPHA, K, func, ALPHA_STEP, K_STEP, K_MAX, GAMMA1, GAMMA2, 4, opt, SENSOR_VALUE_CENTER, MAX_X) ;
+        System.out.println("Dimension = 1 ; Option = " + opt + " ; Fontion = " + func + " ->\n    ") ;
+                Hati.main1D();
+            }
+        }
+        for (int opt = 0 ; opt < NB_OPTION ; opt++){
+            for (int opt2 = opt + 1 ; opt2 < NB_OPTION ; opt2++){
+                for (int func = 0 ; func < NB_FUNC ; func++){
+                    Main2D Hati = new Main2D(PRESENCE, ABSENCE, PRESENCE_TEST, ABSENCE_TEST, ALPHA, K, func, ALPHA_STEP, K_STEP, K_MAX, GAMMA1, GAMMA2, 4, opt, opt2, SENSOR_VALUE_CENTER, MAX_X, MAX_Y) ;
+        System.out.println("Dimension = 2 ; Option = " + opt + ", " + opt2 + " ; Fontion = " + func + " ->") ;
+                    Hati.main2D();
+        System.out.println(" ") ;
                 }
             }
         }
