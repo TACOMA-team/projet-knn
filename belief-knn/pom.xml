@@ -42,7 +42,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.2.1</version>
                 <configuration>
-                    <mainClass>fr.inria.tacoma.knn.unidimensional.Main1D</mainClass>
+                    <mainClass>fr.inria.tacoma.knn.main.Main</mainClass>
                 </configuration>
             </plugin>
         </plugins>
