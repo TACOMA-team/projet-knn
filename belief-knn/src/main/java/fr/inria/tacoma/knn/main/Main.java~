@@ -1,0 +1,81 @@
+package fr.inria.tacoma.knn.main;
+
+import fr.inria.tacoma.knn.unidimensional.Main1D;
+import fr.inria.tacoma.knn.bidimensional.Main2D;
+
+import javax.swing.*;
+import java.io.*;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+public class Main {
+    
+    // Déclaration des fichiers :
+    public static final String PRESENCE = "sensor0pers1";
+    public static final String ABSENCE = "sensor0abs1";
+    public static final String PRESENCE_TEST = "sensor0pers2";
+    public static final String ABSENCE_TEST = "sensor0abs2";
+    
+    // Déclaration du nombre de variables :
+    public static final int NB_OPTION = 5; // Nombre de variables possibles
+    public static final int NB_FUNC = 2; // Nombre de fonctions de distance
+    
+    // Choix du mode :
+    public static final int MODE = 3; // 1 : Montre une courbe pour ALPHA,K 
+                                      // 2 : Erreur en fonc de alpha,k 
+                                      // 3 : Meilleure erraur pour tout les features
+    
+    // Choix des variables (Modes 1 et 2) :
+    public static final int DIM = 2; // Dimension 1 ou 2
+    public static final int OPTION = 0; // 0 : centred val ; 1 : derivation ; 2 : moyenne ; 3 : max ; 4 : min
+    public static final int OPTION2 = 1; // 2ème dimension
+    public static final int FUNC = 1; // 0 : Décroissance exponentielle ; 1 : constante
+    
+    // Choix Variables (Mode 1) :
+    public static final double ALPHA = 0.3;
+    public static final int K = 5;
+    
+    // Choix du pas (Modes 2 et 3) :
+    public static final double ALPHA_STEP = 0.05;
+    public static final int K_STEP = 1;
+    public static final int K_MAX = 20;
+    
+    // Variables chiantes :
+    public static final int SENSOR_VALUE_CENTER = 512;
+    public static final int MAX_X = 1024;
+    public static final int MAX_Y = 1024;
+    
+    public static void main(String[] args) throws IOException {
+        if (MODE == 3)
+            ItsOver9000() ;
+        else {
+            if (DIM == 1) {
+                Main1D Hati = new Main1D(PRESENCE, ABSENCE, PRESENCE_TEST, ABSENCE_TEST, ALPHA, K, FUNC, ALPHA_STEP, K_STEP, K_MAX, MODE, OPTION, SENSOR_VALUE_CENTER, MAX_X) ;
+                Hati.main1D();
+            }
+            if (DIM == 2) {
+                Main2D Hati = new Main2D(PRESENCE, ABSENCE, PRESENCE_TEST, ABSENCE_TEST, ALPHA, K, FUNC, ALPHA_STEP, K_STEP, K_MAX, MODE, OPTION, OPTION2, SENSOR_VALUE_CENTER, MAX_X, MAX_Y) ;
+                Hati.main2D();
+            }
+        }
+        System.out.println("Les poulets sont des bananes ! Et des connard selon un homme qui sait reconnaitre ses pairs") ;
+    }
+    
+    public static void ItsOver9000() throws IOException {
+        for (int opt = 0 ; opt < NB_OPTION ; opt++){
+            for (int func = 0 ; func < NB_FUNC ; func++){
+                Main1D Hati = new Main1D(PRESENCE, ABSENCE, PRESENCE_TEST, ABSENCE_TEST, ALPHA, K, func, ALPHA_STEP, K_STEP, K_MAX, MODE, opt, SENSOR_VALUE_CENTER, MAX_X) ;
+                Hati.main1D();
+            }
+        }
+        for (int opt = 0 ; opt < NB_OPTION ; opt++){
+            for (int opt2 = opt + 1 ; opt2 < NB_OPTION ; opt2++){
+                for (int func = 0 ; func < NB_FUNC ; func++){
+                    Main1D Hati = new Main1D(PRESENCE, ABSENCE, PRESENCE_TEST, ABSENCE_TEST, ALPHA, K, func, ALPHA_STEP, K_STEP, K_MAX, MODE, opt, SENSOR_VALUE_CENTER, MAX_X) ;
+                    Hati.main1D();
+                }
+            }
+        }
+    }    
+}

@@ -22,12 +22,12 @@ public class KnnUtils {
      * list. It is useful to split a list between the learning set and the
      * cross validation set.
      * @param list list to split
-     * @param keepRatio ratio of the list to keep.
+     * @param ratio ratio of the list to keep.
      * @return the extracted list.
      */
-    public static <T> List<T> extractSubList(List<T> list, double keepRatio) {
-        assert keepRatio < 1.0;
-        List<T> subList = list.subList((int)((list.size() - 1) * keepRatio), list.size() - 1);
+    public static <T> List<T> extractSubList(List<T> list, double ratio) {
+        assert ratio < 1.0;
+        List<T> subList = list.subList((int)((list.size() - 1) * ratio), list.size() - 1);
         List<T> extracted = new ArrayList<>();
         extracted.addAll(subList);
         subList.clear();
@@ -81,18 +81,8 @@ public class KnnUtils {
             idealMassFunction.set(model.getFrame().toStateSet(point.getLabel()), 1);
             idealMassFunction.putRemainingOnIgnorance();
             double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
-            return distance * distance / crossValidation.size();
+            return distance * distance;
         }).sum();
-    }
-
-
-    public static <T> KnnBelief<T> getBestKnnBelief(FrameOfDiscernment frame,
-                                                          List<? extends LabelledPoint<T>> points,
-                                                          List<? extends LabelledPoint<T>> crossValidation,
-                                                          double alpha,
-                                                          BiFunction<T, T, Double> distance) {
-        return KnnUtils.getBestKnnBelief(frame, points, crossValidation, alpha, distance,
-                points.size() - 1);
     }
 
     /**
@@ -105,30 +95,5 @@ public class KnnUtils {
      *                         of the training set)
      * @return the knn belief with the lowest error depending on k
      */
-    public static <T> KnnBelief<T> getBestKnnBelief(FrameOfDiscernment frame,
-                                                          List<? extends LabelledPoint<T>> points,
-                                                          List<? extends LabelledPoint<T>> crossValidation,
-                                                          double alpha,
-                                                          BiFunction<T, T, Double> distance,
-                                                          int maxNeighborCount) {
-        double lowestError = Double.POSITIVE_INFINITY;
-        KnnBelief<T> bestModel = null;
-
-        maxNeighborCount = Math.min(maxNeighborCount, points.size() - 1);
-        for (int neighborCount = 1; neighborCount <= maxNeighborCount; neighborCount++) {
-            KnnBelief<T> beliefModel =
-                    new KnnBelief<>(points, neighborCount, alpha, frame,
-                            KnnUtils::optimizedDuboisAndPrade, distance);
-            double error = KnnUtils.error(crossValidation, beliefModel);
-            if (error < lowestError) {
-                lowestError = error;
-                bestModel = beliefModel;
-            }
-        }
-        assert bestModel != null;
-        System.out.println("lowest error: " + lowestError);
-        System.out.println("bestNeighborCount: " + bestModel.getK());
-        return bestModel;
-    }
 
 }

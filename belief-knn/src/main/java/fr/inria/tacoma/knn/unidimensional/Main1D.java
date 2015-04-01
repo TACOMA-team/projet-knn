@@ -17,102 +17,247 @@ import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
 
 import javax.swing.*;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Main1D {
 
-    public static final double ALPHA = 0.3;
-    public static final double TRAINING_SET_RATIO = 0.6;
-    public static final int SENSOR_VALUE_CENTER = 2048;
+    public final String PRESENCE;
+    public final String ABSENCE;
+    public final String PRESENCE_TEST;
+    public final String ABSENCE_TEST;
+    public final double ALPHA;
+    public final int K;
+    public final int FUNC;
+    public final double ALPHA_STEP;
+    public final int K_STEP;
+    public final int K_MAX;
+    public final double GAMMA1;
+    public final double GAMMA2;
+    public final int MODE; // 1 : Montre une courbe pour ALPHA,K ; 2 : erreur en fonc de alpha,k
+    public final int OPTION; // 0 : centred val ; 1 : derivation ; 2 : moyenne ; 3 : max ; 4 : min
+    public final int SENSOR_VALUE_CENTER;
+    public final int MAX_X;
 
-    public static void main(String[] args) throws IOException {
-        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
 
-        String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
-        String presenceFile = "samples/sample-1/sensor-2/presence-motion2.json";
-        List<SensorValue> absence = getPoints("absence", absenceFile);
-        List<SensorValue> presence = getPoints("presence", presenceFile);
-
-        System.out.println(
-                "using " + absenceFile + " for absence and " + presenceFile + " for presence");
-
-        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
-        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
-
-        // extracting cross validation data
-        List<SensorValue> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
-        crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
-
-        //creating training set
-        List<SensorValue> trainingSet = new ArrayList<>();
-        trainingSet.addAll(absence);
-        trainingSet.addAll(presence);
-
-        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
-                ALPHA, (a,b) -> Math.abs(a - b));
-        show(bestModel, trainingSet);
-//        displayTabsDependingOnK(frame, trainingSet);
-//        showBestMatchWithWeakening(frame, trainingSet, crossValidation);
-        showErrors(bestModel, crossValidation);
+    public Main1D(String PRESENCE, String ABSENCE, String PRESENCE_TEST, String ABSENCE_TEST,
+                      double ALPHA, int K, int FUNC,
+                      double ALPHA_STEP, int K_STEP, int K_MAX,
+                      double GAMMA1, double GAMMA2,
+                      int MODE, int OPTION,
+                      int SENSOR_VALUE_CENTER, int MAX_X) {
+        this.PRESENCE = PRESENCE_TEST;
+        this.ABSENCE = ABSENCE;
+        this.PRESENCE_TEST = PRESENCE_TEST;
+        this.ABSENCE_TEST = ABSENCE_TEST;
+        this.ALPHA = ALPHA;
+        this.K = K;
+        this.FUNC = FUNC;
+        this.ALPHA_STEP = ALPHA_STEP;
+        this.K_STEP = K_STEP;
+        this.K_MAX = K_MAX;
+        this.GAMMA1 = GAMMA1;
+        this.GAMMA2 = GAMMA2;
+        this.MODE = MODE;
+        this.OPTION = OPTION;
+        this.SENSOR_VALUE_CENTER = SENSOR_VALUE_CENTER;
+        this.MAX_X = MAX_X;
     }
 
-    private static List<SensorValue> toDerivative(List<SensorValue> sortedPoints) {
-        List<SensorValue> points = new ArrayList<>(sortedPoints.size() - 1);
-        for (int i = 1; i < sortedPoints.size(); i++) {
-            SensorValue point = sortedPoints.get(i);
-            SensorValue prevPoint = sortedPoints.get(i - 1);
-            double absoluteDerivative = Math.abs(point.getValue() - prevPoint.getValue())
-                    / (point.getTimestamp() - prevPoint.getTimestamp());
-            points.add(new SensorValue(point.getSensor(), point.getLabel(), point.getTimestamp(), absoluteDerivative));
+    public void main1D() throws IOException {
+        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence") ;
+
+        // Récupère les points et calcul les features
+        List<SensorValue> absence = CreateList ("absence", ABSENCE, OPTION) ;
+        List<SensorValue> presence = CreateList ("presence", PRESENCE, OPTION) ;
+        List<SensorValue> absence_test = CreateList ("absence", ABSENCE_TEST, OPTION) ;
+        List<SensorValue> presence_test = CreateList ("presence", PRESENCE_TEST, OPTION) ;
+
+        // Crée le jeux de test
+        List<SensorValue> crossValidation = new ArrayList<>() ;
+        crossValidation.addAll(absence_test) ;
+        crossValidation.addAll(presence_test) ;
+
+        // Crée le jeux d'apprentissage
+        List<SensorValue> trainingSet = new ArrayList<>() ;
+        trainingSet.addAll(absence) ;
+        trainingSet.addAll(presence) ;
+
+        // Sélectionne la bonne action selon le mode
+        if (MODE == 1)
+            showTheOne(frame, trainingSet, crossValidation) ;
+        else if (MODE == 2)
+            varAlphaK(frame, trainingSet, crossValidation) ;
+        else if (MODE == 3)
+            bestAlphaK(frame, trainingSet, crossValidation) ;
+        else if (MODE == 4)
+            grad(frame, trainingSet, crossValidation, GAMMA1, GAMMA2) ;
+    }
+
+    //Affiche la fonction de masse.
+    private void showTheOne(FrameOfDiscernment frame, List<SensorValue> trainingSet, List<SensorValue> crossValidation) {
+        KnnBelief<Double> beliefModel = new KnnBelief<Double>(trainingSet, K, ALPHA, FUNC, frame,
+                            KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b)) ;
+        double error = KnnUtils.error(crossValidation, beliefModel) ;
+        System.out.println("k = " + K) ;
+        System.out.println("alpha = " + ALPHA) ;
+        System.out.println("error = " + error) ;
+        show(beliefModel) ;
+    }
+
+    // Ecrit dans le fichier "Result.txt" l'erreur en fonction de k et alpha
+    // Affiche sur la sortie standard les meilleures valeurs de k et alpha et lerreur associée
+    private void varAlphaK(FrameOfDiscernment frame, List<SensorValue> trainingSet, List<SensorValue> crossValidation) throws IOException {
+        int k_mem = 0 ;
+        double alpha_mem = 0. ;
+        double error_mem = Double.POSITIVE_INFINITY ;
+        File file = new File("Result.txt") ;
+        file.createNewFile() ;
+        FileWriter writer = new FileWriter(file) ;
+                writer.write("k,alpha,error\n") ;
+        for (int k = 1 ; k < trainingSet.size() & k <= K_MAX ; k += K_STEP) {
+            for (double alpha = ALPHA_STEP ; alpha < 1. ; alpha += ALPHA_STEP) {
+                KnnBelief<Double> beliefModel = new KnnBelief<Double>(trainingSet, k, alpha, FUNC, frame,
+                            KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b)) ;
+                double error = KnnUtils.error(crossValidation, beliefModel) ;
+                writer.write(k + "," + alpha + "," + error + "\n") ;
+                if (error < error_mem) {
+                    k_mem = k ;
+                    alpha_mem = alpha ;
+                    error_mem = error ;
+                }
+            }
         }
-        return points;
+        System.out.println("k = " + k_mem) ;
+        System.out.println("alpha = " + alpha_mem) ;
+        System.out.println("error = " + error_mem) ;
+        writer.flush() ;
+        writer.close() ;
     }
 
-
-    private static void showBestMatchWithWeakening(FrameOfDiscernment frame,
-                                                   List<SensorValue> trainingSet,
-                                                   List<SensorValue> crossValidation) {
-        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
-                ALPHA, (a,b) -> Math.abs(a - b));
-        show(generateWeakeningModel(bestModel, crossValidation), trainingSet);
+    // Affiche sur la sortie standard les meilleures valeurs de k et alpha et l'erreur associée
+    private void bestAlphaK(FrameOfDiscernment frame, List<SensorValue> trainingSet, List<SensorValue> crossValidation) throws IOException {
+        int k_mem = 0 ;
+        double alpha_mem = 0. ;
+        double error_mem = Double.POSITIVE_INFINITY ;
+        for (int k = 1 ; k < trainingSet.size() & k <= K_MAX ; k += K_STEP) {
+            for (double alpha = ALPHA_STEP ; alpha < 1. ; alpha += ALPHA_STEP) {
+                KnnBelief<Double> beliefModel = new KnnBelief<Double>(trainingSet, k, alpha, FUNC, frame,
+                            KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b)) ;
+                double error = KnnUtils.error(crossValidation, beliefModel) ;
+                if (error < error_mem) {
+                    k_mem = k ;
+                    alpha_mem = alpha ;
+                    error_mem = error ;
+                }
+            }
+        }
+        System.out.println("Dimension = 1 ; Option = " + OPTION + " ; Fontion = " + FUNC + " -> k = " + k_mem + " ; alpha = " + alpha_mem + " ; error = " + error_mem) ;
     }
 
-    private static void displayTabsDependingOnK(FrameOfDiscernment frame,
-                                                List<SensorValue> trainingSet) {
+    // Applique la methode du gradient
+    private void grad(FrameOfDiscernment frame, List<SensorValue> trainingSet, List<SensorValue> crossValidation,
+                             double gamma1, double gamma2) throws IOException {
+        int k_mem = 1 ;
+        double alpha_mem = 0. ;
+        double error_mem = Double.POSITIVE_INFINITY ;
+        boolean stop = false ;
+        int count = 0;
+        while (! stop) {
+//        System.out.println("begin " + count) ;
+            int k0 = k_mem ;
+            double alpha0 = alpha_mem ;
+            double dk = derivate_k(frame, trainingSet, crossValidation, k_mem, alpha_mem) ;
+//       System.out.println("dk = " + dk) ;
+            double dalpha = derivate_alpha(frame, trainingSet, crossValidation, k_mem, alpha_mem) ;
+//       System.out.println("dalpha = " + dalpha) ;
+            int k1 = Math.max(k_mem - ((int) (Math.floor(dk * gamma1))), 1);
+            int k2 = Math.max(k_mem - ((int) (Math.ceil(dk * gamma1))), 1);
+            double alpha = Math.max(Math.min(alpha_mem - dalpha * gamma2, 0.98), 0.01) ;
+            KnnBelief<Double> beliefModel1 = new KnnBelief<Double>(trainingSet, k1, alpha, FUNC, frame,
+                            KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b)) ;
+            double error1 = KnnUtils.error(crossValidation, beliefModel1) ;
+//       System.out.println("error1 = " + error1) ;
+            KnnBelief<Double> beliefModel2 = new KnnBelief<Double>(trainingSet, k2, alpha, FUNC, frame,
+                            KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b)) ;
+            double error2 = KnnUtils.error(crossValidation, beliefModel2) ;
+//       System.out.println("error2 = " + error2) ;
+            if(error1 < error_mem){
+                k_mem = Math.max(k1, 1) ;
+                alpha_mem = alpha ;
+                error_mem = error1 ;
+            }
+            if(error2 < error_mem){
+                k_mem = Math.max(k2, 1) ;
+                alpha_mem = alpha ;
+                error_mem = error2 ;
+            }
+//        System.out.println("k_mem = " + k_mem) ;
+//    System.out.println("alpha_mem = " + alpha_mem) ;
+            count = count + 1 ;
+            if (k_mem == k0 && Math.abs(alpha_mem - alpha0) < 0.01)
+                stop = true ;
+//        System.out.println("end " + count) ;
+        }
+        System.out.println("k = " + k_mem + " ; alpha = " + alpha_mem + " ; error = " + error_mem) ;
+    }
+
+    private double derivate_k(FrameOfDiscernment frame, List<SensorValue> trainingSet, List<SensorValue> crossValidation,
+                             int k, double alpha) throws IOException {
+        KnnBelief<Double> beliefModel1 = new KnnBelief<Double>(trainingSet, k, alpha, FUNC, frame,
+                        KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b)) ;
+        double error1 = KnnUtils.error(crossValidation, beliefModel1) ;
+        KnnBelief<Double> beliefModel2 = new KnnBelief<Double>(trainingSet, k+1, alpha, FUNC, frame,
+                        KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b)) ;
+        double error2 = KnnUtils.error(crossValidation, beliefModel2) ;
+        return error2 - error1 ;
+    }
+
+    private double derivate_alpha(FrameOfDiscernment frame, List<SensorValue> trainingSet, List<SensorValue> crossValidation,
+                             int k, double alpha) throws IOException {
+        KnnBelief<Double> beliefModel1 = new KnnBelief<Double>(trainingSet, k, alpha, FUNC, frame,
+                        KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b)) ;
+        double error1 = KnnUtils.error(crossValidation, beliefModel1) ;
+        KnnBelief<Double> beliefModel2 = new KnnBelief<Double>(trainingSet, k, alpha + 0.01, FUNC, frame,
+                        KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b)) ;
+        double error2 = KnnUtils.error(crossValidation, beliefModel2) ;
+        return (error2 - error1) / 0.01 ;
+    }
+
+    // Affiche la fonction de masse donnée en argument
+    private void show(SensorBeliefModel<Double> model) {
+        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 512, 0, MAX_X);
         JFrame windowFrame = new JFrame();
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        JTabbedPane tabbedPane = new JTabbedPane();
-
-        windowFrame.setContentPane(tabbedPane);
-        windowFrame.setSize(800, 500);
+        windowFrame.setContentPane(chartPanel);
+        windowFrame.pack();
         windowFrame.setVisible(true);
-
-        double min = trainingSet.stream().mapToDouble(SensorValue::getValue).min().getAsDouble();
-        double max = trainingSet.stream().mapToDouble(SensorValue::getValue).max().getAsDouble();
-        double margin = (max - min) * 0.1;
-
-        for (int neighborCount = 1; neighborCount <= trainingSet.size(); neighborCount++) {
-            KnnBelief<Double>  beliefModel = new KnnBelief<>(trainingSet, neighborCount, ALPHA, frame,
-                    KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b));
-
-            JPanel panel = JfreeChartDisplay1D.getChartPanel(beliefModel, 2000, min - margin, max + margin);
-            tabbedPane.addTab("" + neighborCount, panel);
-        }
     }
 
-    /**
-     * Parse the given file to extract points. One file is expected to contain only one sensor.
-     *
-     * @param label state in which the sample was take (i.e. presence or absence)
-     * @param file  path to the file
-     * @return list of points in the file
-     * @throws IOException
-     */
-    private static List<SensorValue> getPoints(String label, String file) throws IOException {
+
+    // Récupère la liste de points depuis le fichier d'entrée et calcule les features
+    private List<SensorValue> CreateList(String label, String file, int option) throws IOException {
+        List<SensorValue> raw = getPoints(label, file) ;
+        if (option == 1)
+            raw = toDerivative(raw) ;
+        else
+        if (option == 2)
+            raw = toAverage(raw) ;
+        else
+        if (option == 3)
+            raw = toMax(raw) ;
+        else
+        if (option == 4)
+            raw = toMin(raw) ;
+        else
+            raw.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER))) ;
+        return raw ;
+    }
+
+    // Extrait la liste des point du fichiers d'entrée
+    private List<SensorValue> getPoints(String label, String file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
         InputStream resourceAsStream = Thread.currentThread().getContextClassLoader()
@@ -129,124 +274,74 @@ public class Main1D {
         return points;
     }
 
-    /**
-     * Shows the model having the lowest error depending on K.
-     * @param frame       frame of discernment
-     * @param trainingSet training set on which we apply knn.
-     * @param crossValidation set of points used for cross validation
-     */
-    private static void showBestMatch(FrameOfDiscernment frame, List<SensorValue> trainingSet,
-                                      List<SensorValue> crossValidation) {
-        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
-                ALPHA, (a,b) -> Math.abs(a - b));
-        show(bestModel, trainingSet);
+    // Calcule la liste des dérivées
+    private List<SensorValue> toDerivative(List<SensorValue> sortedPoints) {
+        List<SensorValue> points = new ArrayList<>(sortedPoints.size() - 1);
+        for (int i = 1; i < sortedPoints.size(); i++) {
+            SensorValue point = sortedPoints.get(i);
+            SensorValue prevPoint = sortedPoints.get(i - 1);
+            double absoluteDerivative = Math.abs(point.getValue() - prevPoint.getValue())
+                    / (point.getTimestamp() - prevPoint.getTimestamp());
+            points.add(new SensorValue(point.getSensor(), point.getLabel(), point.getTimestamp(), absoluteDerivative));
+        }
+        return points;
     }
 
-    private static void show(SensorBeliefModel<Double> model, List<SensorValue> points) {
-        double min = points.stream().mapToDouble(SensorValue::getValue).min().getAsDouble();
-        double max = points.stream().mapToDouble(SensorValue::getValue).max().getAsDouble();
-        double margin = (max - min) * 0.1;
-        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, min - margin , max + margin);
-        JFrame windowFrame = new JFrame();
-        windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        windowFrame.setContentPane(chartPanel);
-        windowFrame.pack();
-        windowFrame.setVisible(true);
+    // Calcule la liste des moyennes des trois dernières valeurs
+    private List<SensorValue> toAverage(List<SensorValue> sortedPoints) {
+        List<SensorValue> points = new ArrayList<>(sortedPoints.size() - 2);
+        for (int i = 2; i < sortedPoints.size(); i++) {
+            SensorValue point = sortedPoints.get(i);
+            SensorValue prevPoint = sortedPoints.get(i - 1);
+            SensorValue prev2Point = sortedPoints.get(i - 2);
+            double centred_average = (Math.abs(point.getValue() - SENSOR_VALUE_CENTER) + Math.abs(prevPoint.getValue() - SENSOR_VALUE_CENTER) + Math.abs(prev2Point.getValue() - SENSOR_VALUE_CENTER)) / 3;
+            points.add(new SensorValue(point.getSensor(), point.getLabel(), point.getTimestamp(), centred_average));
+        }
+        return points;
     }
 
-
-    private static DiscountingBeliefModel generateWeakeningModel(SensorBeliefModel<Double> model,
-                                                                 List<SensorValue> crossValidation) {
-        DecisionStrategy decisionStrategy =
-                new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
-        WeakeningFunction weakeningFunction = new WeakeningFunction();
-        DiscountingBeliefModel discountingBeliefModel =
-                new DiscountingBeliefModel(model, weakeningFunction);
-
-        Map<String, Double> standardDevs = getStandardDevs(crossValidation);
-        for (SensorValue sensorValue : crossValidation) {
-            Decision decision = decisionStrategy.decide(
-                    discountingBeliefModel.toMass(sensorValue.getValue()));
-            StateSet actualDecision = decision.getStateSet();
-            StateSet expectedDecision = model.getFrame().toStateSet(sensorValue.getLabel());
-
-            if (!actualDecision.includesOrEquals(expectedDecision)) {
-                System.out.println("bad decision for value: " + sensorValue.getValue());
-                //FIXME This weakening is arbitrary
-                double weakening = decision.getConfidence() - 0.5;
-                weakeningFunction.addWeakeningPoint(sensorValue.getValue(), weakening,
-                        standardDevs.get(sensorValue.getLabel()));
-            }
-        }
-
-        return discountingBeliefModel;
+    private double max (double a, double b, double c) {
+        if (a >= b & a >= c)
+            return a ;
+        else if (b >= a & b >= c)
+            return b ;
+        else
+            return c ;
     }
 
-    private static void showErrors(SensorBeliefModel<Double> model,
-                                   List<SensorValue> crossValidation) {
-        DecisionStrategy decisionStrategy =
-                new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
-        int errorCount = 0;
-
-        for (SensorValue sensorValue : crossValidation) {
-            Decision decision = decisionStrategy.decide(
-                    model.toMass(sensorValue.getValue()));
-            StateSet actualDecision = decision.getStateSet();
-            StateSet expectedDecision = model.getFrame().toStateSet(sensorValue.getLabel());
-
-            if (!actualDecision.includesOrEquals(expectedDecision)) {
-                //System.out.println("bad decision for value: " + sensorValue.getValue());
-                errorCount++;
-            }
+    // Calcule la liste des maximums des trois dernières valeurs
+    private List<SensorValue> toMax(List<SensorValue> sortedPoints) {
+        List<SensorValue> points = new ArrayList<>(sortedPoints.size() - 2);
+        for (int i = 2; i < sortedPoints.size(); i++) {
+            SensorValue point = sortedPoints.get(i);
+            SensorValue prevPoint = sortedPoints.get(i - 1);
+            SensorValue prev2Point = sortedPoints.get(i - 2);
+            double maximum = max (Math.abs(point.getValue() - SENSOR_VALUE_CENTER) , Math.abs(prevPoint.getValue() - SENSOR_VALUE_CENTER) , Math.abs(prev2Point.getValue() - SENSOR_VALUE_CENTER)) ;
+            points.add(new SensorValue(point.getSensor(), point.getLabel(), point.getTimestamp(), maximum));
         }
-        System.out.println(errorCount + " errors out of " + crossValidation.size()
-                + " (" + (double)errorCount * 100 / crossValidation.size() +" %) tested point" +
-                " with decision algorithm.");
+        return points;
     }
 
-
-    /**
-     * Generate a map which gives the standard deviation for each label in the training set.
-     * @param trainingSet
-     * @return
-     */
-    private static Map<String,Double> getStandardDevs(List<SensorValue> trainingSet) {
-        Map<String, Double> stdDevs = new HashMap<>();
-        List<String> labels = trainingSet.stream()
-                .map(SensorValue::getLabel).distinct()
-                .collect(Collectors.toList());
-
-        for (String label : labels) {
-            double[] values = trainingSet.stream()
-                    .filter(p -> p.getLabel().equals(label))
-                    .mapToDouble(SensorValue::getValue)
-                    .toArray();
-            double average = Arrays.stream(values).average().getAsDouble();
-            double squareAverage = Arrays.stream(values).map(a -> a * a)
-                    .average().getAsDouble();
-
-            stdDevs.put(label, Math.sqrt(squareAverage - (average * average)));
-        }
-        return stdDevs;
+    private double min (double a, double b, double c) {
+        if (a <= b & a <= c)
+            return a ;
+        else if (b <= a & b <= c)
+            return b ;
+        else
+            return c ;
     }
 
-    private static class WeakeningFunction implements Function<Double, Double> {
-        private Map<Double, Double> alphas = new HashMap<>();
-        private Map<Double, Double> stdDevs = new HashMap<>();
-
-        public void addWeakeningPoint(double center, double weakening, double amplitude) {
-            alphas.put(center, weakening);
-            stdDevs.put(center, amplitude);
+    // Calcule la liste des minimums des trois dernières valeurs
+    private List<SensorValue> toMin(List<SensorValue> sortedPoints) {
+        List<SensorValue> points = new ArrayList<>(sortedPoints.size() - 2);
+        for (int i = 2; i < sortedPoints.size(); i++) {
+            SensorValue point = sortedPoints.get(i);
+            SensorValue prevPoint = sortedPoints.get(i - 1);
+            SensorValue prev2Point = sortedPoints.get(i - 2);
+            double minimum = min (Math.abs(point.getValue() - SENSOR_VALUE_CENTER) , Math.abs(prevPoint.getValue() - SENSOR_VALUE_CENTER) , Math.abs(prev2Point.getValue() - SENSOR_VALUE_CENTER)) ;
+            points.add(new SensorValue(point.getSensor(), point.getLabel(), point.getTimestamp(), minimum));
         }
-
-        @Override
-        public Double apply(Double value) {
-            return alphas.entrySet().stream().mapToDouble(entry -> {
-                Double max = entry.getValue();
-                double diff = entry.getKey() - value;
-                return max * Math.exp(-Math.pow(3 * diff / stdDevs.get(entry.getKey()), 2));
-            }).sum();
-        }
+        return points;
     }
 
 }
