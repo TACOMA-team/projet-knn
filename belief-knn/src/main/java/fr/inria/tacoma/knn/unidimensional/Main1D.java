@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.criteria.Criteria;
@@ -30,6 +31,11 @@ public class Main1D {
     public static final int SENSOR_VALUE_CENTER = 2048;
 
     public static void main(String[] args) throws IOException {
+//        test1();
+        printAbsenceAndPresenceDepndingOnAlpha();
+    }
+
+    private static void test1() throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
 
         String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
@@ -58,6 +64,30 @@ public class Main1D {
 //        displayTabsDependingOnK(frame, trainingSet);
 //        showBestMatchWithWeakening(frame, trainingSet, crossValidation);
         showErrors(bestModel, crossValidation);
+    }
+
+    private static void printAbsenceAndPresenceDepndingOnAlpha() throws IOException {
+        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
+
+        String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
+        String presenceFile = "samples/sample-1/sensor-2/presence-motion2.json";
+        List<SensorValue> absence = getPoints("absence", absenceFile);
+        List<SensorValue> presence = getPoints("presence", presenceFile);
+
+        List<SensorValue> trainingSet = new ArrayList<>();
+        trainingSet.addAll(absence);
+        trainingSet.addAll(presence);
+
+        double sensorValue = 2170.0;
+        int k = 10;
+        for (int i = 0; i <= 100; i++) {
+            double alpha = i * 0.01;
+            KnnBelief<Double> model = new KnnBelief<>(trainingSet, k, alpha, frame,
+                    l -> l.stream().reduce(Combinations::dempster).get(), (a,b) -> Math.abs(a - b));
+            System.out.println(alpha + ";"
+                    + model.toMass(sensorValue).get(frame.toStateSet("absence"))
+                    + ";" + model.toMass(sensorValue).get(frame.toStateSet("presence")));
+        }
     }
 
     private static List<SensorValue> toDerivative(List<SensorValue> sortedPoints) {
