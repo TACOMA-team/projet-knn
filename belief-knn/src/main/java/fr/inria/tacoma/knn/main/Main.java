@@ -19,10 +19,10 @@ public class Main {
 
     // Déclaration du nombre de variables :
     public static final int NB_OPTION = 5; // Nombre de variables possibles
-    public static final int NB_FUNC = 2; // Nombre de fonctions de distance
+    public static final int NB_FUNC = 1; // Nombre de fonctions de distance
 
     // Choix du mode :
-    public static final int MODE = 2; // 1 : Montre la courbe pour ALPHA,K
+    public static final int MODE = 1; // 1 : Montre la courbe pour ALPHA,K
                                       // 2 : Ecrit dans le fichier "Result.txt" l'erreur en fonction de alpha,k
                                       // 3 : Cherche les meilleures k et alpha pour toutes les features
                                       // 4 : Cherche les meilleures k et alpha pour une feature avec le gradient
@@ -30,13 +30,13 @@ public class Main {
     
 
     // Choix des variables (Modes 1 et 2) :
-    public static final int DIM = 2; // Dimension 1 ou 2
-    public static final int OPTION = 1; // 0 : centred val ; 1 : derivation ; 2 : moyenne ; 3 : max ; 4 : min
+    public static final int DIM = 1; // Dimension 1 ou 2
+    public static final int OPTION = 0; // 0 : centred val ; 1 : derivation ; 2 : moyenne ; 3 : max ; 4 : min
     public static final int OPTION2 = 3; // 2ème dimension
     public static final int FUNC = 0; // 0 : Décroissance exponentielle ; 1 : constante
 
     // Choix Variables (Mode 1) :
-    public static final double ALPHA = 0.98;
+    public static final double ALPHA = 0.5;
     public static final int K = 6;
 
     // Choix du pas (Modes 2 et 3) :

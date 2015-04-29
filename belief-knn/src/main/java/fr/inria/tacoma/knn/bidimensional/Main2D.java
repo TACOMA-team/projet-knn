@@ -45,7 +45,7 @@ public class Main2D {
                       double GAMMA1, double GAMMA2,
                       int MODE, int OPTION, int OPTION2,
                       int SENSOR_VALUE_CENTER, int MAX_X, int MAX_Y) {
-        this.PRESENCE = PRESENCE_TEST;
+        this.PRESENCE = PRESENCE;
         this.ABSENCE = ABSENCE;
         this.PRESENCE_TEST = PRESENCE_TEST;
         this.ABSENCE_TEST = ABSENCE_TEST;
@@ -165,17 +165,18 @@ public class Main2D {
     private void grad(FrameOfDiscernment frame, List<LabelledPoint<Coordinate>> trainingSet, List<LabelledPoint<Coordinate>> crossValidation,
                              double gamma1, double gamma2) throws IOException {
         int k_mem = 1 ;
-        double alpha_mem = 0. ;
-        double error_mem = Double.POSITIVE_INFINITY ;
+        double alpha_mem = 0 ;
+        double error_mem = KnnUtils.error(crossValidation, new KnnBelief<Coordinate>(trainingSet, k_mem, alpha_mem, FUNC, frame,
+                            KnnUtils::optimizedDuboisAndPrade, Coordinate::distance)) ;
         boolean stop = false ;
-        int count = 0;
+        int count = 0 ;
         while (! stop) {
 //        System.out.println("begin " + count) ;
             int k0 = k_mem ;
             double alpha0 = alpha_mem ;
-            double dk = derivate_k(frame, trainingSet, crossValidation, k_mem, alpha_mem) ;
+            double dk = derivate_k(frame, trainingSet, crossValidation, k_mem, alpha_mem, error_mem) ;
 //       System.out.println("dk = " + dk) ;
-            double dalpha = derivate_alpha(frame, trainingSet, crossValidation, k_mem, alpha_mem) ;
+            double dalpha = derivate_alpha(frame, trainingSet, crossValidation, k_mem, alpha_mem, error_mem) ;
 //       System.out.println("dalpha = " + dalpha) ;
             int k1 = Math.max(k_mem - ((int) (Math.floor(dk * gamma1))), 1);
             int k2 = Math.max(k_mem - ((int) (Math.ceil(dk * gamma1))), 1);
@@ -189,12 +190,12 @@ public class Main2D {
             double error2 = KnnUtils.error(crossValidation, beliefModel2) ;
 //       System.out.println("error2 = " + error2) ;
             if(error1 < error_mem){
-                k_mem = Math.max(k1, 1) ;
+                k_mem = k1 ;
                 alpha_mem = alpha ;
                 error_mem = error1 ;
             }
             if(error2 < error_mem){
-                k_mem = Math.max(k2, 1) ;
+                k_mem = k2 ;
                 alpha_mem = alpha ;
                 error_mem = error2 ;
             }
@@ -209,25 +210,19 @@ public class Main2D {
     }
 
     private double derivate_k(FrameOfDiscernment frame, List<LabelledPoint<Coordinate>> trainingSet, List<LabelledPoint<Coordinate>> crossValidation,
-                             int k, double alpha) throws IOException {
-        KnnBelief<Coordinate> beliefModel1 = new KnnBelief<Coordinate>(trainingSet, k, alpha, FUNC, frame,
-                        KnnUtils::optimizedDuboisAndPrade, Coordinate::distance) ;
-        double error1 = KnnUtils.error(crossValidation, beliefModel1) ;
+                             int k, double alpha, double error0) throws IOException {
         KnnBelief<Coordinate> beliefModel2 = new KnnBelief<Coordinate>(trainingSet, k+1, alpha, FUNC, frame,
                         KnnUtils::optimizedDuboisAndPrade, Coordinate::distance) ;
         double error2 = KnnUtils.error(crossValidation, beliefModel2) ;
-        return error2 - error1 ;
+        return error2 - error0 ;
     }
 
     private double derivate_alpha(FrameOfDiscernment frame, List<LabelledPoint<Coordinate>> trainingSet, List<LabelledPoint<Coordinate>> crossValidation,
-                             int k, double alpha) throws IOException {
-        KnnBelief<Coordinate> beliefModel1 = new KnnBelief<Coordinate>(trainingSet, k, alpha, FUNC, frame,
-                        KnnUtils::optimizedDuboisAndPrade, Coordinate::distance) ;
-        double error1 = KnnUtils.error(crossValidation, beliefModel1) ;
+                             int k, double alpha, double error0) throws IOException {
         KnnBelief<Coordinate> beliefModel2 = new KnnBelief<Coordinate>(trainingSet, k, alpha + 0.01, FUNC, frame,
                         KnnUtils::optimizedDuboisAndPrade, Coordinate::distance) ;
         double error2 = KnnUtils.error(crossValidation, beliefModel2) ;
-        return (error2 - error1) / 0.01 ;
+        return (error2 - error0) / 0.01 ;
     }
 
     private List<LabelledPoint<Coordinate>> CreateList(String label, String file, int option, int option2) throws IOException {
