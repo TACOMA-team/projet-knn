@@ -2,7 +2,7 @@ package fr.inria.tacoma.knn.core;
 
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
-import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
+import fr.inria.tacoma.bft.core.mass.MutableMass;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 
 import java.math.BigDecimal;
@@ -69,7 +69,7 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
     }
 
     private MassFunction getMassFunction(T value, LabelledPoint<T> point) {
-        MassFunction mass = new MassFunctionImpl(frame);
+        MutableMass mass = frame.newMass();
         double gamma = 1.0 / gammaProvider.get(point.getLabel());
         mass.addToFocal(frame.toStateSet(point.getLabel()),
                 alpha * Math.exp(-distance.apply(value, point.getValue()) * gamma));
@@ -108,18 +108,18 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
     }
 
     @Override
-    public MassFunction toMass(T sensorValue) {
+    public MutableMass toMass(T sensorValue) {
         List<LabelledPoint<T>> knn = knn(sensorValue);
         List<MassFunction> masses = knn.stream()
                 .map(p -> getMassFunction(sensorValue, p))
                 .collect(Collectors.toList());
-        return combination.apply(masses);
+        return frame.newMass(combination.apply(masses));
     }
 
 
     @Override
     public MassFunction toMassWithoutValue() {
-        MassFunctionImpl massFunction = new MassFunctionImpl(frame);
+        MutableMass massFunction = frame.newMass();
         massFunction.putRemainingOnIgnorance();
         return massFunction;
     }

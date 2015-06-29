@@ -2,6 +2,7 @@ package fr.inria.tacoma.knn.util;
 
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
+import fr.inria.tacoma.bft.core.mass.MutableMass;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 
 import java.util.function.Function;
@@ -18,8 +19,8 @@ public class DiscountingBeliefModel implements SensorBeliefModel<Double> {
     }
 
     @Override
-    public MassFunction toMass(Double sensorValue) {
-        MassFunction massFunction = underlyingModel.toMass(sensorValue);
+    public MutableMass toMass(Double sensorValue) {
+        MutableMass massFunction = underlyingModel.toMass(sensorValue);
         massFunction.discount(weakeningFunction.apply(sensorValue));
         return massFunction;
     }

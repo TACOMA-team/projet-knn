@@ -10,7 +10,6 @@
     <name>sensor calibration</name>
 
     <modules>
-        <module>java-bft</module>
         <module>belief-knn</module>
     </modules>
 

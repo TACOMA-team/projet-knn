@@ -3,7 +3,7 @@ package fr.inria.tacoma.knn.util;
 import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
-import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
+import fr.inria.tacoma.bft.core.mass.MutableMass;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
 import fr.inria.tacoma.knn.core.KnnBelief;
@@ -79,7 +79,7 @@ public class KnnUtils {
                                    SensorBeliefModel<T> model) {
         return crossValidation.stream().mapToDouble(point -> {
             MassFunction actualMassFunction = model.toMass(point.getValue());
-            MassFunction idealMassFunction = new MassFunctionImpl(model.getFrame());
+            MutableMass idealMassFunction = model.getFrame().newMass();
             idealMassFunction.set(model.getFrame().toStateSet(point.getLabel()), 1);
             idealMassFunction.putRemainingOnIgnorance();
             double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);

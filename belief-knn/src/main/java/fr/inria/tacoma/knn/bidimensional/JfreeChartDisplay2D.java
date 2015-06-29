@@ -1,5 +1,6 @@
 package fr.inria.tacoma.knn.bidimensional;
 
+
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import org.jfree.chart.ChartPanel;
