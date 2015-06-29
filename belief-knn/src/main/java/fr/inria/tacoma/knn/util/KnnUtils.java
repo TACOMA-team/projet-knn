@@ -6,12 +6,14 @@ import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MassFunctionImpl;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
-import fr.inria.tacoma.knn.core.LabelledPoint;
 import fr.inria.tacoma.knn.core.KnnBelief;
+import fr.inria.tacoma.knn.core.LabelledPoint;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class KnnUtils {
 
@@ -93,6 +95,57 @@ public class KnnUtils {
                                                           BiFunction<T, T, Double> distance) {
         return KnnUtils.getBestKnnBelief(frame, points, crossValidation, alpha, distance,
                 points.size() - 1);
+    }
+    public static <T> KnnBelief<T> getBestKnnBeliefForAlphaAndK(FrameOfDiscernment frame,
+            List<? extends LabelledPoint<T>> points,
+            List<? extends LabelledPoint<T>> crossValidation,
+            BiFunction<T, T, Double> distance) {
+
+        int maxNeighborCount =  points.size() - 1;
+
+        List<KnnBelief<T>> models = getKnnBeliefsForK(frame, points, crossValidation, distance,
+                maxNeighborCount);
+
+        KnnBelief<T> bestModel = null;
+        double lowestError = Double.POSITIVE_INFINITY;
+        for (KnnBelief<T> model : models) {
+            double error = KnnUtils.error(crossValidation, model);
+            if (error < lowestError) {
+                lowestError = error;
+                bestModel = model;
+            }
+        }
+
+        assert bestModel != null;
+        System.out.println("lowest error: " + lowestError);
+        System.out.println("bestNeighborCount: " + bestModel.getK());
+        System.out.println("best alpha: " + bestModel.getAlpha());
+        return bestModel;
+    }
+
+    private static <T> List<KnnBelief<T>> getKnnBeliefsForK(FrameOfDiscernment frame,
+                                                            List<? extends LabelledPoint<T>> points,
+                                                            List<? extends LabelledPoint<T>> crossValidation,
+                                                            BiFunction<T, T, Double> distance,
+                                                            int maxNeighborCount) {
+        return IntStream.range(1, maxNeighborCount).parallel().mapToObj(
+                    k -> {
+                        KnnBelief<T> model = null;
+                        double lowestError = Double.POSITIVE_INFINITY;
+                        for (int i = 1; i < 100; i++) {
+                            double alpha = 0.01 * i;
+                            KnnBelief<T> beliefModel =
+                                    new KnnBelief<>(points, k, alpha, frame,
+                                            KnnUtils::optimizedDuboisAndPrade, distance);
+                            double error = KnnUtils.error(crossValidation, beliefModel);
+                            if (error < lowestError) {
+                                lowestError = error;
+                                model = beliefModel;
+                            }
+                        }
+                        return model;
+                    }
+            ).collect(Collectors.toList());
     }
 
     /**

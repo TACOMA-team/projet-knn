@@ -19,8 +19,8 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
     private final FrameOfDiscernment frame;
     private final List<? extends LabelledPoint<T>> points;
     private final Map<String, Double> gammaProvider;
-    Function<List<MassFunction>, MassFunction> combination;
-    private BiFunction<T, T, Double> distance;
+    private final Function<List<MassFunction>, MassFunction>combination;
+    private final BiFunction<T, T, Double> distance;
 
     public KnnBelief(List<? extends LabelledPoint<T>> points, int k, double alpha,
                      FrameOfDiscernment frame,
@@ -72,7 +72,7 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
         MassFunction mass = new MassFunctionImpl(frame);
         double gamma = 1.0 / gammaProvider.get(point.getLabel());
         mass.addToFocal(frame.toStateSet(point.getLabel()),
-                alpha * Math.exp(-Math.pow(distance.apply(value, point.getValue()) * gamma, 1)));
+                alpha * Math.exp(-distance.apply(value, point.getValue()) * gamma));
         mass.putRemainingOnIgnorance();
         return mass;
     }
@@ -83,6 +83,28 @@ public class KnnBelief<T> implements SensorBeliefModel<T> {
 
     public double getAlpha() {
         return alpha;
+    }
+
+    /**
+     * create a copy of the model with the same parameters except for alpha
+     * @param newAlpha new alpha to use in new belief model
+     * @return a new belief model with the given alpha
+     */
+    public KnnBelief<T> withAlpha(double newAlpha) {
+        return new KnnBelief<>(points, k, newAlpha, frame, combination, distance);
+    }
+
+    /**
+     * create a copy of the model with the same parameters except for k
+     * @param newK new k to use in new belief model
+     * @return a new belief model with the given k
+     */
+    public KnnBelief<T> withK(int newK) {
+        return new KnnBelief<>(points, newK, alpha, frame, combination, distance);
+    }
+
+    public KnnBelief<T> withAlphaAndK(double newAlpha, int newK) {
+        return new KnnBelief<>(points, newK, newAlpha, frame, combination, distance);
     }
 
     @Override
