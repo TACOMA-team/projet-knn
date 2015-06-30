@@ -13,6 +13,7 @@ import fr.inria.tacoma.bft.decision.Decision;
 import fr.inria.tacoma.bft.decision.DecisionStrategy;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.knn.core.KnnBelief;
+import fr.inria.tacoma.knn.util.AveragingBeliefModel;
 import fr.inria.tacoma.knn.util.DiscountingBeliefModel;
 import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
@@ -26,16 +27,17 @@ import java.util.stream.Collectors;
 
 public class Main1D {
 
-    public static final double ALPHA = 0.3;
+    public static final double ALPHA = 0.2;
     public static final double TRAINING_SET_RATIO = 0.6;
     public static final int SENSOR_VALUE_CENTER = 2048;
 
     public static void main(String[] args) throws IOException {
-//        test1();
-        printAbsenceAndPresenceDepndingOnAlpha();
+        testKfold(5);
+//        printAbsenceAndPresenceDependingOnAlpha();
+        testNormal();
     }
 
-    private static void test1() throws IOException {
+    private static void testNormal() throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
 
         String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
@@ -46,10 +48,36 @@ public class Main1D {
         System.out.println(
                 "using " + absenceFile + " for absence and " + presenceFile + " for presence");
 
-        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
-        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+//        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+//        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+        crossValidation(frame, absence, presence);
+    }
 
+    private static void testKfold(int k) throws IOException {
+        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
+
+        String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
+        String presenceFile = "samples/sample-1/sensor-2/presence-motion2.json";
+        List<SensorValue> absence = getPoints("absence", absenceFile);
+        List<SensorValue> presence = getPoints("presence", presenceFile);
+
+        System.out.println(
+                "using " + absenceFile + " for absence and " + presenceFile + " for presence");
+//        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+//        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+
+        List<SensorValue> data = new ArrayList<>();
+        data.addAll(absence);
+        data.addAll(presence);
+        kfold(k, data, frame);
+    }
+
+    private static void crossValidation(FrameOfDiscernment frame, List<SensorValue> absence,
+                                        List<SensorValue> presence) {
         // extracting cross validation data
+
+        List<SensorValue> values = new ArrayList<>(absence);
+        values.addAll(presence);
         List<SensorValue> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
         crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
 
@@ -58,15 +86,41 @@ public class Main1D {
         trainingSet.addAll(absence);
         trainingSet.addAll(presence);
 
-        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
-                ALPHA, (a,b) -> Math.abs(a - b));
-        show(bestModel, trainingSet);
+        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBeliefForAlphaAndK(frame, trainingSet,
+                crossValidation,
+                (a, b) -> Math.abs(a - b));
+        show(bestModel, values);
 //        displayTabsDependingOnK(frame, trainingSet);
 //        showBestMatchWithWeakening(frame, trainingSet, crossValidation);
-        showErrors(bestModel, crossValidation);
+        showErrors(bestModel, values);
     }
 
-    private static void printAbsenceAndPresenceDepndingOnAlpha() throws IOException {
+    private static void kfold(final int k, List<SensorValue> data, FrameOfDiscernment frame) {
+        List<SensorValue> shuffled = new ArrayList<>(data);
+        Collections.shuffle(shuffled);
+        List<List<SensorValue>> sublists = KnnUtils.split(shuffled, k);
+        List<SensorBeliefModel<Double>> models = new ArrayList<>(k);
+
+        for (int validationIndex = 0; validationIndex < k; validationIndex++) {
+            List<SensorValue> trainingSet = new ArrayList<>();
+            List<SensorValue> crossValidation = sublists.get(validationIndex);
+            for (int j = 0; j < k; j++) {
+                if(validationIndex != j) {
+                    trainingSet.addAll(sublists.get(j));
+                }
+            }
+            KnnBelief<Double> bestModel = KnnUtils.getBestKnnBeliefForAlphaAndK(frame, trainingSet,
+                    crossValidation,
+                    (a, b) -> Math.abs(a - b));
+            models.add(bestModel);
+        }
+
+        SensorBeliefModel<Double> result = new AveragingBeliefModel<>(models);
+        show(result, data);
+        showErrors(result, data);
+    }
+
+    private static void printAbsenceAndPresenceDependingOnAlpha() throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
 
         String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
@@ -97,7 +151,8 @@ public class Main1D {
             SensorValue prevPoint = sortedPoints.get(i - 1);
             double absoluteDerivative = Math.abs(point.getValue() - prevPoint.getValue())
                     / (point.getTimestamp() - prevPoint.getTimestamp());
-            points.add(new SensorValue(point.getSensor(), point.getLabel(), point.getTimestamp(), absoluteDerivative));
+            points.add(new SensorValue(point.getSensor(), point.getLabel(), point.getTimestamp(),
+                    absoluteDerivative));
         }
         return points;
     }

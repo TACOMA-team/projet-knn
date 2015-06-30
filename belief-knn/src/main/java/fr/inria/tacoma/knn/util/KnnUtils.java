@@ -36,6 +36,20 @@ public class KnnUtils {
         return extracted;
     }
 
+    public static <T> List<List<T>> split(List<T> list, int nb) {
+        int size = list.size();
+        double sublistSize = (double)size / nb;
+
+        List<List<T>> sublists = IntStream.range(0, nb)
+                .mapToDouble(i -> (double) i * sublistSize) // compute intervals
+                .mapToObj(start -> list.subList((int) start,
+                        (int) (start + sublistSize))) // create sublist views
+                .map(sublist -> new ArrayList<>(sublist)) // copy sublists to avoid troubles
+                .collect(Collectors.toList());
+
+        return sublists;
+    }
+
 
     /**
      * An hybrid fusion mecanism which apply dempster for every points with the same label, end the
