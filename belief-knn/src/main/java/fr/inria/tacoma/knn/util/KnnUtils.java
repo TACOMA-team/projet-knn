@@ -8,8 +8,10 @@ import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
 import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.core.LabelledPoint;
+import fr.inria.tacoma.knn.unidimensional.SensorValue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -29,7 +31,7 @@ public class KnnUtils {
      */
     public static <T> List<T> extractSubList(List<T> list, double keepRatio) {
         assert keepRatio < 1.0;
-        List<T> subList = list.subList((int)((list.size() - 1) * keepRatio), list.size() - 1);
+        List<T> subList = list.subList((int) ((list.size() - 1) * keepRatio), list.size() - 1);
         List<T> extracted = new ArrayList<>();
         extracted.addAll(subList);
         subList.clear();
@@ -197,5 +199,30 @@ public class KnnUtils {
         System.out.println("bestNeighborCount: " + bestModel.getK());
         return bestModel;
     }
+
+    public static SensorBeliefModel<Double> generateKFoldModel(int k, List<SensorValue> data,
+                                                               FrameOfDiscernment frame) {
+        List<SensorValue> shuffled = new ArrayList<>(data);
+        Collections.shuffle(shuffled);
+        List<List<SensorValue>> sublists = KnnUtils.split(shuffled, k);
+        List<SensorBeliefModel<Double>> models = new ArrayList<>(k);
+
+        for (int validationIndex = 0; validationIndex < k; validationIndex++) {
+            List<SensorValue> trainingSet = new ArrayList<>();
+            List<SensorValue> crossValidation = sublists.get(validationIndex);
+            for (int j = 0; j < k; j++) {
+                if(validationIndex != j) {
+                    trainingSet.addAll(sublists.get(j));
+                }
+            }
+            KnnBelief<Double> bestModel = KnnUtils.getBestKnnBeliefForAlphaAndK(frame, trainingSet,
+                    crossValidation,
+                    (a, b) -> Math.abs(a - b));
+            models.add(bestModel);
+        }
+
+        return new AveragingBeliefModel<>(models);
+    }
+
 
 }
