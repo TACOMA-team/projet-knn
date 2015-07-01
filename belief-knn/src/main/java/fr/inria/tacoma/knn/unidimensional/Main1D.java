@@ -13,7 +13,7 @@ import fr.inria.tacoma.bft.decision.Decision;
 import fr.inria.tacoma.bft.decision.DecisionStrategy;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.knn.core.KnnBelief;
-import fr.inria.tacoma.knn.util.AveragingBeliefModel;
+import fr.inria.tacoma.knn.util.ConsonantBeliefModel;
 import fr.inria.tacoma.knn.util.DiscountingBeliefModel;
 import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
@@ -32,7 +32,9 @@ public class Main1D {
     public static final int SENSOR_VALUE_CENTER = 2048;
 
     public static void main(String[] args) throws IOException {
-        testKfold(5);
+        testKfold(3);
+        testKfold(3);
+        testKfold(3);
 //        printAbsenceAndPresenceDependingOnAlpha();
         testNormal();
     }
@@ -40,44 +42,48 @@ public class Main1D {
     private static void testNormal() throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
 
-        String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
-        String presenceFile = "samples/sample-1/sensor-2/presence-motion2.json";
+        String absenceFile = "samples/sample-1/sensor-1/absence-motion1.json";
+        String presenceFile = "samples/sample-1/sensor-1/presence-motion1.json";
         List<SensorValue> absence = getPoints("absence", absenceFile);
         List<SensorValue> presence = getPoints("presence", presenceFile);
 
         System.out.println(
                 "using " + absenceFile + " for absence and " + presenceFile + " for presence");
 
-//        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
-//        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
         crossValidation(frame, absence, presence);
     }
 
     private static void testKfold(int k) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
 
-        String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
-        String presenceFile = "samples/sample-1/sensor-2/presence-motion2.json";
+        String absenceFile = "samples/sample-1/sensor-1/absence-motion1.json";
+        String presenceFile = "samples/sample-1/sensor-1/presence-motion1.json";
         List<SensorValue> absence = getPoints("absence", absenceFile);
         List<SensorValue> presence = getPoints("presence", presenceFile);
 
         System.out.println(
                 "using " + absenceFile + " for absence and " + presenceFile + " for presence");
-//        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
-//        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
 
         List<SensorValue> data = new ArrayList<>();
         data.addAll(absence);
         data.addAll(presence);
-        kfold(k, data, frame);
+        SensorBeliefModel<Double> result = KnnUtils.generateKFoldModel(k, data, frame);
+        result = generateWeakeningModel(result, data);
+        result = new ConsonantBeliefModel<>(result);
+        show(result, data);
+        showErrors(result, data);
     }
 
     private static void crossValidation(FrameOfDiscernment frame, List<SensorValue> absence,
                                         List<SensorValue> presence) {
         // extracting cross validation data
 
-        List<SensorValue> values = new ArrayList<>(absence);
-        values.addAll(presence);
+        List<SensorValue> data = new ArrayList<>(absence);
+        data.addAll(presence);
         List<SensorValue> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
         crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
 
@@ -86,39 +92,14 @@ public class Main1D {
         trainingSet.addAll(absence);
         trainingSet.addAll(presence);
 
-        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBeliefForAlphaAndK(frame, trainingSet,
-                crossValidation,
-                (a, b) -> Math.abs(a - b));
-        show(bestModel, values);
-//        displayTabsDependingOnK(frame, trainingSet);
-//        showBestMatchWithWeakening(frame, trainingSet, crossValidation);
-        showErrors(bestModel, values);
-    }
-
-    private static void kfold(final int k, List<SensorValue> data, FrameOfDiscernment frame) {
-        List<SensorValue> shuffled = new ArrayList<>(data);
-        Collections.shuffle(shuffled);
-        List<List<SensorValue>> sublists = KnnUtils.split(shuffled, k);
-        List<SensorBeliefModel<Double>> models = new ArrayList<>(k);
-
-        for (int validationIndex = 0; validationIndex < k; validationIndex++) {
-            List<SensorValue> trainingSet = new ArrayList<>();
-            List<SensorValue> crossValidation = sublists.get(validationIndex);
-            for (int j = 0; j < k; j++) {
-                if(validationIndex != j) {
-                    trainingSet.addAll(sublists.get(j));
-                }
-            }
-            KnnBelief<Double> bestModel = KnnUtils.getBestKnnBeliefForAlphaAndK(frame, trainingSet,
-                    crossValidation,
-                    (a, b) -> Math.abs(a - b));
-            models.add(bestModel);
-        }
-
-        SensorBeliefModel<Double> result = new AveragingBeliefModel<>(models);
+        SensorBeliefModel<Double> result = KnnUtils.getBestKnnBeliefForAlphaAndK(frame, trainingSet,
+                crossValidation, (a, b) -> Math.abs(a - b));
+        result = generateWeakeningModel(result, data);
+        result = new ConsonantBeliefModel<>(result);
         show(result, data);
         showErrors(result, data);
     }
+
 
     private static void printAbsenceAndPresenceDependingOnAlpha() throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
@@ -230,8 +211,7 @@ public class Main1D {
     private static void show(SensorBeliefModel<Double> model, List<SensorValue> points) {
         double min = points.stream().mapToDouble(SensorValue::getValue).min().getAsDouble();
         double max = points.stream().mapToDouble(SensorValue::getValue).max().getAsDouble();
-        double margin = (max - min) * 0.1;
-        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, min - margin , max + margin);
+        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, min , max);
         JFrame windowFrame = new JFrame();
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         windowFrame.setContentPane(chartPanel);
@@ -272,6 +252,7 @@ public class Main1D {
         DecisionStrategy decisionStrategy =
                 new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
         int errorCount = 0;
+        int imprecisionCount = 0;
 
         for (SensorValue sensorValue : crossValidation) {
             Decision decision = decisionStrategy.decide(
@@ -283,9 +264,15 @@ public class Main1D {
                 //System.out.println("bad decision for value: " + sensorValue.getValue());
                 errorCount++;
             }
+            else if (!actualDecision.equals(expectedDecision)) {
+                imprecisionCount++;
+            }
         }
         System.out.println(errorCount + " errors out of " + crossValidation.size()
                 + " (" + (double)errorCount * 100 / crossValidation.size() +" %) tested point" +
+                " with decision algorithm.");
+        System.out.println(imprecisionCount + " imprecision out of " + crossValidation.size()
+                + " (" + (double)imprecisionCount * 100 / crossValidation.size() +" %) tested point" +
                 " with decision algorithm.");
     }
 
