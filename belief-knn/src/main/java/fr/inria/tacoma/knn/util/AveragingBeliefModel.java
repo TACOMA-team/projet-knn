@@ -38,4 +38,8 @@ public class AveragingBeliefModel<T> implements SensorBeliefModel<T>{
     public FrameOfDiscernment getFrame() {
         return frame;
     }
+
+    public List<SensorBeliefModel<T>> getBeliefModels() {
+        return beliefModels;
+    }
 }

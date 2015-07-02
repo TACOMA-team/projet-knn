@@ -13,6 +13,7 @@ import fr.inria.tacoma.bft.decision.Decision;
 import fr.inria.tacoma.bft.decision.DecisionStrategy;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.knn.core.KnnBelief;
+import fr.inria.tacoma.knn.core.LabelledPoint;
 import fr.inria.tacoma.knn.util.ConsonantBeliefModel;
 import fr.inria.tacoma.knn.util.DiscountingBeliefModel;
 import fr.inria.tacoma.knn.util.KnnUtils;
@@ -30,65 +31,87 @@ public class Main1D {
     public static final double ALPHA = 0.2;
     public static final double TRAINING_SET_RATIO = 0.6;
     public static final int SENSOR_VALUE_CENTER = 2048;
+    public static final String ABSENCE_SAMPLE = "samples/sample-1/sensor-1/absence-motion1.json";
+    public static final String PRESENCE_SAMPLE = "samples/sample-1/sensor-1/presence-motion1.json";
 
     public static void main(String[] args) throws IOException {
-        testKfold(3);
-        testKfold(3);
-        testKfold(3);
+        showGenerated();
+//        testKfold(5);
 //        printAbsenceAndPresenceDependingOnAlpha();
-        testNormal();
+//        testNormal();
+    }
+
+    private static void showGenerated() throws IOException {
+        List<LabelledPoint<Double>> pointsA = getPoints("A", "samples/sample-5/sensor-0/A-sensor0.json");
+        List<LabelledPoint<Double>> pointsB = getPoints("B", "samples/sample-5/sensor-0/B-sensor0.json");
+        List<LabelledPoint<Double>> pointsC = getPoints("C", "samples/sample-5/sensor-0/C-sensor0.json");
+
+        List<LabelledPoint<Double>> data = new ArrayList<>(pointsA);
+        data.addAll(pointsB);
+        data.addAll(pointsC);
+        FrameOfDiscernment frame= FrameOfDiscernment.newFrame("generated", "A", "B", "C");
+        Kfold<Double> kfold = new Kfold<>(frame, data, 5, (a,b) -> Math.abs(a - b));
+        SensorBeliefModel<Double> result = kfold.generateModel();
+
+        show(result, data, "kfold generated");
+        result = generateWeakeningModel(result, data);
+        result = new ConsonantBeliefModel<>(result);
+        show(result, data, "kfold generated consonant");
     }
 
     private static void testNormal() throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
 
-        String absenceFile = "samples/sample-1/sensor-1/absence-motion1.json";
-        String presenceFile = "samples/sample-1/sensor-1/presence-motion1.json";
-        List<SensorValue> absence = getPoints("absence", absenceFile);
-        List<SensorValue> presence = getPoints("presence", presenceFile);
+        String absenceFile = ABSENCE_SAMPLE;
+        String presenceFile = PRESENCE_SAMPLE;
+        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile);
+        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile);
 
         System.out.println(
                 "using " + absenceFile + " for absence and " + presenceFile + " for presence");
 
-        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
-        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+//        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+//        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
         crossValidation(frame, absence, presence);
     }
 
     private static void testKfold(int k) throws IOException {
         FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
 
-        String absenceFile = "samples/sample-1/sensor-1/absence-motion1.json";
-        String presenceFile = "samples/sample-1/sensor-1/presence-motion1.json";
-        List<SensorValue> absence = getPoints("absence", absenceFile);
-        List<SensorValue> presence = getPoints("presence", presenceFile);
+        String absenceFile = ABSENCE_SAMPLE;
+        String presenceFile = PRESENCE_SAMPLE;
+        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile);
+        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile);
 
         System.out.println(
                 "using " + absenceFile + " for absence and " + presenceFile + " for presence");
-        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
-        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+//        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
+//        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
 
-        List<SensorValue> data = new ArrayList<>();
+        List<LabelledPoint<Double>> data = new ArrayList<>();
         data.addAll(absence);
         data.addAll(presence);
-        SensorBeliefModel<Double> result = KnnUtils.generateKFoldModel(k, data, frame);
+
+        Kfold<Double> kfold = new Kfold<>(frame, data, k, (a,b) -> Math.abs(a - b));
+        SensorBeliefModel<Double> result = kfold.generateModel();
         result = generateWeakeningModel(result, data);
         result = new ConsonantBeliefModel<>(result);
-        show(result, data);
+        System.out.println("error for best model k-fold : " + KnnUtils.error(data, result));
+        show(result, data, "kfold k="+k);
         showErrors(result, data);
     }
 
-    private static void crossValidation(FrameOfDiscernment frame, List<SensorValue> absence,
-                                        List<SensorValue> presence) {
+    private static void crossValidation(FrameOfDiscernment frame, List<LabelledPoint<Double>> absence,
+                                        List<LabelledPoint<Double>> presence) {
         // extracting cross validation data
 
-        List<SensorValue> data = new ArrayList<>(absence);
+        List<LabelledPoint<Double>> data = new ArrayList<>(absence);
         data.addAll(presence);
-        List<SensorValue> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
+        List<LabelledPoint<Double>> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
         crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
 
         //creating training set
-        List<SensorValue> trainingSet = new ArrayList<>();
+        List<LabelledPoint<Double>> trainingSet = new ArrayList<>();
         trainingSet.addAll(absence);
         trainingSet.addAll(presence);
 
@@ -96,7 +119,8 @@ public class Main1D {
                 crossValidation, (a, b) -> Math.abs(a - b));
         result = generateWeakeningModel(result, data);
         result = new ConsonantBeliefModel<>(result);
-        show(result, data);
+        System.out.println("error for best model : " + KnnUtils.error(data, result));
+        show(result, data, "cross validation");
         showErrors(result, data);
     }
 
@@ -106,10 +130,10 @@ public class Main1D {
 
         String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
         String presenceFile = "samples/sample-1/sensor-2/presence-motion2.json";
-        List<SensorValue> absence = getPoints("absence", absenceFile);
-        List<SensorValue> presence = getPoints("presence", presenceFile);
+        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile);
+        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile);
 
-        List<SensorValue> trainingSet = new ArrayList<>();
+        List<LabelledPoint<Double>> trainingSet = new ArrayList<>();
         trainingSet.addAll(absence);
         trainingSet.addAll(presence);
 
@@ -140,11 +164,11 @@ public class Main1D {
 
 
     private static void showBestMatchWithWeakening(FrameOfDiscernment frame,
-                                                   List<SensorValue> trainingSet,
-                                                   List<SensorValue> crossValidation) {
+                                                   List<LabelledPoint<Double>> trainingSet,
+                                                   List<LabelledPoint<Double>> crossValidation) {
         KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
                 ALPHA, (a,b) -> Math.abs(a - b));
-        show(generateWeakeningModel(bestModel, crossValidation), trainingSet);
+        show(generateWeakeningModel(bestModel, crossValidation), trainingSet, "best match with weakening");
     }
 
     private static void displayTabsDependingOnK(FrameOfDiscernment frame,
@@ -178,7 +202,7 @@ public class Main1D {
      * @return list of points in the file
      * @throws IOException
      */
-    private static List<SensorValue> getPoints(String label, String file) throws IOException {
+    private static List<LabelledPoint<Double>> getPoints(String label, String file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
         InputStream resourceAsStream = Thread.currentThread().getContextClassLoader()
@@ -186,7 +210,7 @@ public class Main1D {
         MappingIterator<SensorValue> iterator = mapper.readValues(
                 new JsonFactory().createParser(resourceAsStream),
                 SensorValue.class);
-        List<SensorValue> points = new ArrayList<>();
+        List<LabelledPoint<Double>> points = new ArrayList<>();
         while (iterator.hasNext()) {
             SensorValue next = iterator.next();
             next.setLabel(label);
@@ -201,18 +225,20 @@ public class Main1D {
      * @param trainingSet training set on which we apply knn.
      * @param crossValidation set of points used for cross validation
      */
-    private static void showBestMatch(FrameOfDiscernment frame, List<SensorValue> trainingSet,
-                                      List<SensorValue> crossValidation) {
+    private static void showBestMatch(FrameOfDiscernment frame, List<LabelledPoint<Double>> trainingSet,
+                                      List<LabelledPoint<Double>> crossValidation) {
         KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
                 ALPHA, (a,b) -> Math.abs(a - b));
-        show(bestModel, trainingSet);
+        show(bestModel, trainingSet, "best match");
     }
 
-    private static void show(SensorBeliefModel<Double> model, List<SensorValue> points) {
-        double min = points.stream().mapToDouble(SensorValue::getValue).min().getAsDouble();
-        double max = points.stream().mapToDouble(SensorValue::getValue).max().getAsDouble();
+    private static void show(SensorBeliefModel<Double> model, List<LabelledPoint<Double>> points,
+                             String title) {
+        double min = points.stream().mapToDouble(LabelledPoint::getValue).min().getAsDouble();
+        double max = points.stream().mapToDouble(LabelledPoint::getValue).max().getAsDouble();
         ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, min , max);
         JFrame windowFrame = new JFrame();
+        windowFrame.setTitle(title);
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         windowFrame.setContentPane(chartPanel);
         windowFrame.pack();
@@ -221,7 +247,7 @@ public class Main1D {
 
 
     private static DiscountingBeliefModel generateWeakeningModel(SensorBeliefModel<Double> model,
-                                                                 List<SensorValue> crossValidation) {
+                                                                 List<LabelledPoint<Double>> crossValidation) {
         DecisionStrategy decisionStrategy =
                 new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
         WeakeningFunction weakeningFunction = new WeakeningFunction();
@@ -229,7 +255,7 @@ public class Main1D {
                 new DiscountingBeliefModel(model, weakeningFunction);
 
         Map<String, Double> standardDevs = getStandardDevs(crossValidation);
-        for (SensorValue sensorValue : crossValidation) {
+        for (LabelledPoint<Double> sensorValue : crossValidation) {
             Decision decision = decisionStrategy.decide(
                     discountingBeliefModel.toMass(sensorValue.getValue()));
             StateSet actualDecision = decision.getStateSet();
@@ -238,7 +264,7 @@ public class Main1D {
             if (!actualDecision.includesOrEquals(expectedDecision)) {
                 System.out.println("bad decision for value: " + sensorValue.getValue());
                 //FIXME This weakening is arbitrary
-                double weakening = decision.getConfidence() - 0.5;
+                double weakening = 0.5;
                 weakeningFunction.addWeakeningPoint(sensorValue.getValue(), weakening,
                         standardDevs.get(sensorValue.getLabel()));
             }
@@ -248,13 +274,13 @@ public class Main1D {
     }
 
     private static void showErrors(SensorBeliefModel<Double> model,
-                                   List<SensorValue> crossValidation) {
+                                   List<LabelledPoint<Double>> crossValidation) {
         DecisionStrategy decisionStrategy =
                 new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
         int errorCount = 0;
         int imprecisionCount = 0;
 
-        for (SensorValue sensorValue : crossValidation) {
+        for (LabelledPoint<Double> sensorValue : crossValidation) {
             Decision decision = decisionStrategy.decide(
                     model.toMass(sensorValue.getValue()));
             StateSet actualDecision = decision.getStateSet();
@@ -282,16 +308,16 @@ public class Main1D {
      * @param trainingSet
      * @return
      */
-    private static Map<String,Double> getStandardDevs(List<SensorValue> trainingSet) {
+    private static Map<String,Double> getStandardDevs(List<LabelledPoint<Double>> trainingSet) {
         Map<String, Double> stdDevs = new HashMap<>();
         List<String> labels = trainingSet.stream()
-                .map(SensorValue::getLabel).distinct()
+                .map(LabelledPoint::getLabel).distinct()
                 .collect(Collectors.toList());
 
         for (String label : labels) {
             double[] values = trainingSet.stream()
                     .filter(p -> p.getLabel().equals(label))
-                    .mapToDouble(SensorValue::getValue)
+                    .mapToDouble(LabelledPoint::getValue)
                     .toArray();
             double average = Arrays.stream(values).average().getAsDouble();
             double squareAverage = Arrays.stream(values).map(a -> a * a)

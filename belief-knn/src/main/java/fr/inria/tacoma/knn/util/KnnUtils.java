@@ -8,7 +8,6 @@ import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
 import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.core.LabelledPoint;
-import fr.inria.tacoma.knn.unidimensional.SensorValue;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -113,8 +112,8 @@ public class KnnUtils {
                 points.size() - 1);
     }
     public static <T> KnnBelief<T> getBestKnnBeliefForAlphaAndK(FrameOfDiscernment frame,
-            List<? extends LabelledPoint<T>> points,
-            List<? extends LabelledPoint<T>> crossValidation,
+            List<LabelledPoint<T>> points,
+            List<LabelledPoint<T>> crossValidation,
             BiFunction<T, T, Double> distance) {
 
         int maxNeighborCount =  points.size() - 1;
@@ -133,9 +132,9 @@ public class KnnUtils {
         }
 
         assert bestModel != null;
-        System.out.println("lowest error: " + lowestError);
-        System.out.println("bestNeighborCount: " + bestModel.getK());
-        System.out.println("best alpha: " + bestModel.getAlpha());
+//        System.out.println("lowest error: " + lowestError);
+//        System.out.println("bestNeighborCount: " + bestModel.getK());
+//        System.out.println("best alpha: " + bestModel.getAlpha());
         return bestModel;
     }
 
@@ -144,7 +143,8 @@ public class KnnUtils {
                                                             List<? extends LabelledPoint<T>> crossValidation,
                                                             BiFunction<T, T, Double> distance,
                                                             int maxNeighborCount) {
-        return IntStream.range(1, maxNeighborCount).parallel().mapToObj(
+        //TODO change limit if necessary, it is just to avoid long computations
+        return IntStream.range(1, maxNeighborCount).limit(50).parallel().mapToObj(
                     k -> {
                         KnnBelief<T> model = null;
                         double lowestError = Double.POSITIVE_INFINITY;
@@ -200,29 +200,6 @@ public class KnnUtils {
         return bestModel;
     }
 
-    public static SensorBeliefModel<Double> generateKFoldModel(int k, List<SensorValue> data,
-                                                               FrameOfDiscernment frame) {
-        List<SensorValue> shuffled = new ArrayList<>(data);
-        Collections.shuffle(shuffled);
-        List<List<SensorValue>> sublists = KnnUtils.split(shuffled, k);
-        List<SensorBeliefModel<Double>> models = new ArrayList<>(k);
-
-        for (int validationIndex = 0; validationIndex < k; validationIndex++) {
-            List<SensorValue> trainingSet = new ArrayList<>();
-            List<SensorValue> crossValidation = sublists.get(validationIndex);
-            for (int j = 0; j < k; j++) {
-                if(validationIndex != j) {
-                    trainingSet.addAll(sublists.get(j));
-                }
-            }
-            KnnBelief<Double> bestModel = KnnUtils.getBestKnnBeliefForAlphaAndK(frame, trainingSet,
-                    crossValidation,
-                    (a, b) -> Math.abs(a - b));
-            models.add(bestModel);
-        }
-
-        return new AveragingBeliefModel<>(models);
-    }
 
 
 }
