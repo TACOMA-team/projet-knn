@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.criteria.Criteria;
@@ -13,6 +12,7 @@ import fr.inria.tacoma.bft.decision.Decision;
 import fr.inria.tacoma.bft.decision.DecisionStrategy;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.knn.core.KnnBelief;
+import fr.inria.tacoma.knn.core.KnnFactory;
 import fr.inria.tacoma.knn.core.LabelledPoint;
 import fr.inria.tacoma.knn.util.ConsonantBeliefModel;
 import fr.inria.tacoma.knn.util.DiscountingBeliefModel;
@@ -42,19 +42,26 @@ public class Main1D {
     }
 
     private static void showGenerated() throws IOException {
-        List<LabelledPoint<Double>> pointsA = getPoints("A", "samples/sample-5/sensor-0/A-sensor0.json");
-        List<LabelledPoint<Double>> pointsB = getPoints("B", "samples/sample-5/sensor-0/B-sensor0.json");
-        List<LabelledPoint<Double>> pointsC = getPoints("C", "samples/sample-5/sensor-0/C-sensor0.json");
+        List<LabelledPoint<Double>> pointsA =
+                getPoints("A", "samples/sample-5/sensor-0/A-sensor0.json");
+        List<LabelledPoint<Double>> pointsB =
+                getPoints("B", "samples/sample-5/sensor-0/B-sensor0.json");
+        List<LabelledPoint<Double>> pointsC =
+                getPoints("C", "samples/sample-5/sensor-0/C-sensor0.json");
 
         List<LabelledPoint<Double>> data = new ArrayList<>(pointsA);
         data.addAll(pointsB);
         data.addAll(pointsC);
         FrameOfDiscernment frame= FrameOfDiscernment.newFrame("generated", "A", "B", "C");
-        Kfold<Double> kfold = new Kfold<>(frame, data, 5, (a,b) -> Math.abs(a - b));
+        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
+        Kfold<Double> kfold = new Kfold<>(factory, data, 5);
+        long start = System.nanoTime();
         SensorBeliefModel<Double> result = kfold.generateModel();
+        long end = System.nanoTime();
+        System.out.println("generated kfold model in " + ((double) end - (double)start) / 1000000000 + "s");
 
         show(result, data, "kfold generated");
-        result = generateWeakeningModel(result, data);
+        //result = generateWeakeningModel(result, data);
         result = new ConsonantBeliefModel<>(result);
         show(result, data, "kfold generated consonant");
     }
@@ -92,7 +99,8 @@ public class Main1D {
         data.addAll(absence);
         data.addAll(presence);
 
-        Kfold<Double> kfold = new Kfold<>(frame, data, k, (a,b) -> Math.abs(a - b));
+        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
+        Kfold<Double> kfold = new Kfold<>(factory, data, k);
         SensorBeliefModel<Double> result = kfold.generateModel();
         result = generateWeakeningModel(result, data);
         result = new ConsonantBeliefModel<>(result);
@@ -114,9 +122,9 @@ public class Main1D {
         List<LabelledPoint<Double>> trainingSet = new ArrayList<>();
         trainingSet.addAll(absence);
         trainingSet.addAll(presence);
-
-        SensorBeliefModel<Double> result = KnnUtils.getBestKnnBeliefForAlphaAndK(frame, trainingSet,
-                crossValidation, (a, b) -> Math.abs(a - b));
+        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
+        SensorBeliefModel<Double> result =
+                KnnUtils.getBestKnnBeliefForAlphaAndK(factory, trainingSet, crossValidation);
         result = generateWeakeningModel(result, data);
         result = new ConsonantBeliefModel<>(result);
         System.out.println("error for best model : " + KnnUtils.error(data, result));
@@ -125,29 +133,6 @@ public class Main1D {
     }
 
 
-    private static void printAbsenceAndPresenceDependingOnAlpha() throws IOException {
-        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-
-        String absenceFile = "samples/sample-1/sensor-2/absence-motion2.json";
-        String presenceFile = "samples/sample-1/sensor-2/presence-motion2.json";
-        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile);
-        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile);
-
-        List<LabelledPoint<Double>> trainingSet = new ArrayList<>();
-        trainingSet.addAll(absence);
-        trainingSet.addAll(presence);
-
-        double sensorValue = 2170.0;
-        int k = 10;
-        for (int i = 0; i <= 100; i++) {
-            double alpha = i * 0.01;
-            KnnBelief<Double> model = new KnnBelief<>(trainingSet, k, alpha, frame,
-                    l -> l.stream().reduce(Combinations::dempster).get(), (a,b) -> Math.abs(a - b));
-            System.out.println(alpha + ";"
-                    + model.toMass(sensorValue).get(frame.toStateSet("absence"))
-                    + ";" + model.toMass(sensorValue).get(frame.toStateSet("presence")));
-        }
-    }
 
     private static List<SensorValue> toDerivative(List<SensorValue> sortedPoints) {
         List<SensorValue> points = new ArrayList<>(sortedPoints.size() - 1);
@@ -163,36 +148,29 @@ public class Main1D {
     }
 
 
-    private static void showBestMatchWithWeakening(FrameOfDiscernment frame,
-                                                   List<LabelledPoint<Double>> trainingSet,
-                                                   List<LabelledPoint<Double>> crossValidation) {
-        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
-                ALPHA, (a,b) -> Math.abs(a - b));
-        show(generateWeakeningModel(bestModel, crossValidation), trainingSet, "best match with weakening");
-    }
-
-    private static void displayTabsDependingOnK(FrameOfDiscernment frame,
-                                                List<SensorValue> trainingSet) {
-        JFrame windowFrame = new JFrame();
-        windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        JTabbedPane tabbedPane = new JTabbedPane();
-
-        windowFrame.setContentPane(tabbedPane);
-        windowFrame.setSize(800, 500);
-        windowFrame.setVisible(true);
-
-        double min = trainingSet.stream().mapToDouble(SensorValue::getValue).min().getAsDouble();
-        double max = trainingSet.stream().mapToDouble(SensorValue::getValue).max().getAsDouble();
-        double margin = (max - min) * 0.1;
-
-        for (int neighborCount = 1; neighborCount <= trainingSet.size(); neighborCount++) {
-            KnnBelief<Double>  beliefModel = new KnnBelief<>(trainingSet, neighborCount, ALPHA, frame,
-                    KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b));
-
-            JPanel panel = JfreeChartDisplay1D.getChartPanel(beliefModel, 2000, min - margin, max + margin);
-            tabbedPane.addTab("" + neighborCount, panel);
-        }
-    }
+//
+//    private static void displayTabsDependingOnK(FrameOfDiscernment frame,
+//                                                List<SensorValue> trainingSet) {
+//        JFrame windowFrame = new JFrame();
+//        windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+//        JTabbedPane tabbedPane = new JTabbedPane();
+//
+//        windowFrame.setContentPane(tabbedPane);
+//        windowFrame.setSize(800, 500);
+//        windowFrame.setVisible(true);
+//
+//        double min = trainingSet.stream().mapToDouble(SensorValue::getValue).min().getAsDouble();
+//        double max = trainingSet.stream().mapToDouble(SensorValue::getValue).max().getAsDouble();
+//        double margin = (max - min) * 0.1;
+//
+//        for (int neighborCount = 1; neighborCount <= trainingSet.size(); neighborCount++) {
+//            KnnBelief<Double>  beliefModel = new KnnBelief<>(trainingSet, neighborCount, ALPHA, frame,
+//                    KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b));
+//
+//            JPanel panel = JfreeChartDisplay1D.getChartPanel(beliefModel, 2000, min - margin, max + margin);
+//            tabbedPane.addTab("" + neighborCount, panel);
+//        }
+//    }
 
     /**
      * Parse the given file to extract points. One file is expected to contain only one sensor.
@@ -219,18 +197,6 @@ public class Main1D {
         return points;
     }
 
-    /**
-     * Shows the model having the lowest error depending on K.
-     * @param frame       frame of discernment
-     * @param trainingSet training set on which we apply knn.
-     * @param crossValidation set of points used for cross validation
-     */
-    private static void showBestMatch(FrameOfDiscernment frame, List<LabelledPoint<Double>> trainingSet,
-                                      List<LabelledPoint<Double>> crossValidation) {
-        KnnBelief<Double> bestModel = KnnUtils.getBestKnnBelief(frame, trainingSet, crossValidation,
-                ALPHA, (a,b) -> Math.abs(a - b));
-        show(bestModel, trainingSet, "best match");
-    }
 
     private static void show(SensorBeliefModel<Double> model, List<LabelledPoint<Double>> points,
                              String title) {

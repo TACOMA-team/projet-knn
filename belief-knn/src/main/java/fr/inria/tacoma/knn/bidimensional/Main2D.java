@@ -6,8 +6,9 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
-import fr.inria.tacoma.knn.core.LabelledPoint;
 import fr.inria.tacoma.knn.core.KnnBelief;
+import fr.inria.tacoma.knn.core.KnnFactory;
+import fr.inria.tacoma.knn.core.LabelledPoint;
 import fr.inria.tacoma.knn.unidimensional.SensorValue;
 import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
@@ -60,8 +61,9 @@ public class Main2D {
     private static void showBestMatchWithFixedAlpha(StateSet stateSet, FrameOfDiscernment frame,
                                                     List<LabelledPoint<Coordinate>> points,
                                                     List<LabelledPoint<Coordinate>> testSample) {
-        show(stateSet, KnnUtils.getBestKnnBelief(frame, points, testSample, ALPHA,
-                Coordinate::distance));
+        KnnFactory<Coordinate> factory = KnnFactory.getGenericFactory(frame,
+                Coordinate::distance);
+        show(stateSet, KnnUtils.getBestKnnBeliefWithFixedAlpha(factory, points, testSample, ALPHA));
 
     }
 

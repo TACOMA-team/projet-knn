@@ -1,17 +1,17 @@
 package fr.inria.tacoma.knn.util;
 
 import fr.inria.tacoma.bft.combinations.Combinations;
-import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MutableMass;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
 import fr.inria.tacoma.knn.core.KnnBelief;
+import fr.inria.tacoma.knn.core.KnnFactory;
 import fr.inria.tacoma.knn.core.LabelledPoint;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -103,22 +103,20 @@ public class KnnUtils {
     }
 
 
-    public static <T> KnnBelief<T> getBestKnnBelief(FrameOfDiscernment frame,
-                                                          List<? extends LabelledPoint<T>> points,
-                                                          List<? extends LabelledPoint<T>> crossValidation,
-                                                          double alpha,
-                                                          BiFunction<T, T, Double> distance) {
-        return KnnUtils.getBestKnnBelief(frame, points, crossValidation, alpha, distance,
+    public static <T> KnnBelief<T> getBestKnnBeliefWithFixedAlpha(KnnFactory<T> factory,
+                                                                  List<? extends LabelledPoint<T>> points,
+                                                                  List<? extends LabelledPoint<T>> crossValidation,
+                                                                  double alpha) {
+        return KnnUtils.getBestKnnBeliefWithFixedAlpha(factory, points, crossValidation, alpha,
                 points.size() - 1);
     }
-    public static <T> KnnBelief<T> getBestKnnBeliefForAlphaAndK(FrameOfDiscernment frame,
+    public static <T> KnnBelief<T> getBestKnnBeliefForAlphaAndK(KnnFactory<T> factory,
             List<LabelledPoint<T>> points,
-            List<LabelledPoint<T>> crossValidation,
-            BiFunction<T, T, Double> distance) {
+            List<LabelledPoint<T>> crossValidation) {
 
         int maxNeighborCount =  points.size() - 1;
 
-        List<KnnBelief<T>> models = getKnnBeliefsForK(frame, points, crossValidation, distance,
+        List<KnnBelief<T>> models = getKnnBeliefsForK(factory, points, crossValidation,
                 maxNeighborCount);
 
         KnnBelief<T> bestModel = null;
@@ -138,56 +136,55 @@ public class KnnUtils {
         return bestModel;
     }
 
-    private static <T> List<KnnBelief<T>> getKnnBeliefsForK(FrameOfDiscernment frame,
+    private static <T> List<KnnBelief<T>> getKnnBeliefsForK(KnnFactory<T> factory,
                                                             List<? extends LabelledPoint<T>> points,
                                                             List<? extends LabelledPoint<T>> crossValidation,
-                                                            BiFunction<T, T, Double> distance,
                                                             int maxNeighborCount) {
-        //TODO change limit if necessary, it is just to avoid long computations
-        return IntStream.range(1, maxNeighborCount).limit(50).parallel().mapToObj(
-                    k -> {
-                        KnnBelief<T> model = null;
-                        double lowestError = Double.POSITIVE_INFINITY;
-                        for (int i = 1; i < 100; i++) {
-                            double alpha = 0.01 * i;
-                            KnnBelief<T> beliefModel =
-                                    new KnnBelief<>(points, k, alpha, frame,
-                                            KnnUtils::optimizedDuboisAndPrade, distance);
-                            double error = KnnUtils.error(crossValidation, beliefModel);
-                            if (error < lowestError) {
-                                lowestError = error;
-                                model = beliefModel;
-                            }
-                        }
-                        return model;
-                    }
+        return IntStream.range(1, maxNeighborCount).limit(100).parallel().mapToObj(
+                    k -> getBestModelForFixedK(factory, points, crossValidation, k)
             ).collect(Collectors.toList());
+    }
+
+    private static <T> KnnBelief<T> getBestModelForFixedK(KnnFactory<T> factory,
+                                                          List<? extends LabelledPoint<T>> points,
+                                                          List<? extends LabelledPoint<T>> crossValidation,
+                                                          int k) {
+        Map<String, Double> gammas = generateGammaProvider(factory.getDistance(), points);
+        KnnBelief<T> model = null;
+        double lowestError = Double.POSITIVE_INFINITY;
+        for (int i = 1; i < 100; i++) {
+            double alpha = 0.01 * i;
+            KnnBelief<T> beliefModel = factory.newKnnBelief(points, gammas, k, alpha);
+            double error = KnnUtils.error(crossValidation, beliefModel);
+            if (error < lowestError) {
+                lowestError = error;
+                model = beliefModel;
+            }
+        }
+        return model;
     }
 
     /**
      * Finds the model having the lowest error depending on K. This iterate the knn algorithm by
      * incrementing k and calculating the error. It then return the model with the minimum error.
      *
-     * @param frame            frame of discernment
      * @param points      training set to use
      * @param maxNeighborCount maximum to use for k (the effective max will be limited by the size
      *                         of the training set)
      * @return the knn belief with the lowest error depending on k
      */
-    public static <T> KnnBelief<T> getBestKnnBelief(FrameOfDiscernment frame,
-                                                          List<? extends LabelledPoint<T>> points,
-                                                          List<? extends LabelledPoint<T>> crossValidation,
-                                                          double alpha,
-                                                          BiFunction<T, T, Double> distance,
-                                                          int maxNeighborCount) {
+    public static <T> KnnBelief<T> getBestKnnBeliefWithFixedAlpha(KnnFactory<T> factory,
+                                                                  List<? extends LabelledPoint<T>> points,
+                                                                  List<? extends LabelledPoint<T>> crossValidation,
+                                                                  double alpha,
+                                                                  int maxNeighborCount) {
         double lowestError = Double.POSITIVE_INFINITY;
         KnnBelief<T> bestModel = null;
+        Map<String, Double> gammas = generateGammaProvider(factory.getDistance(), points);
 
         maxNeighborCount = Math.min(maxNeighborCount, points.size() - 1);
         for (int neighborCount = 1; neighborCount <= maxNeighborCount; neighborCount++) {
-            KnnBelief<T> beliefModel =
-                    new KnnBelief<>(points, neighborCount, alpha, frame,
-                            KnnUtils::optimizedDuboisAndPrade, distance);
+            KnnBelief<T> beliefModel = factory.newKnnBelief(points, gammas, neighborCount, alpha);
             double error = KnnUtils.error(crossValidation, beliefModel);
             if (error < lowestError) {
                 lowestError = error;
@@ -201,5 +198,30 @@ public class KnnUtils {
     }
 
 
+    private static <T> Map<String,Double> generateGammaProvider(BiFunction<T, T, Double> distance,
+                                                         List<? extends LabelledPoint<T>> points) {
+        Set<String> labels = new HashSet<>();
+        points.forEach(p -> labels.add(p.getLabel()));
+        Map<String, Double> gammas = new HashMap<>();
+        for (String label : labels) {
+            List<T> pointValues = points.stream()
+                    .filter(p -> p.getLabel().equals(label))
+                    .map(LabelledPoint::getValue).collect(Collectors.toList());
+            BigDecimal average = BigDecimal.ZERO;
+
+            int size = pointValues.size();
+            for (int i = 0; i < size; i++) {
+                for (int j = i + 1; j < size; j++) {
+                    average = average.add(new BigDecimal(
+                                    distance.apply(pointValues.get(i), pointValues.get(j))
+                            )
+                    );
+                }
+            }
+            average = average.divide(new BigDecimal(size * (size - 1)), new MathContext(10));
+            gammas.put(label, average.doubleValue());
+        }
+        return gammas;
+    }
 
 }
