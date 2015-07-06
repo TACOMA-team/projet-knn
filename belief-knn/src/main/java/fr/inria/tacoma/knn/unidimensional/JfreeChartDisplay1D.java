@@ -4,19 +4,28 @@ import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
+import fr.inria.tacoma.knn.core.KnnBelief;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.xy.DefaultXYDataset;
 
+import javax.swing.*;
 import java.util.*;
 import java.util.stream.IntStream;
 
 public class JfreeChartDisplay1D {
 
+    public static final String DEFAULT_TITLE = "sensor to belief mapping";
+
     public static ChartPanel getChartPanel(SortedMap<Double, MassFunction> masses,
                                            FrameOfDiscernment frame) {
+        return getChartPanel(masses, frame, DEFAULT_TITLE);
+    }
+
+    public static ChartPanel getChartPanel(SortedMap<Double, MassFunction> masses,
+                                           FrameOfDiscernment frame, String title) {
         HashMap<StateSet,double[][]> dataMap = new HashMap<>();
         for (int i = 1; i <= frame.card(); i++) {
             for (StateSet stateSet : frame.getStateSetsWithCard(i)) {
@@ -39,7 +48,7 @@ public class JfreeChartDisplay1D {
         for (Map.Entry<StateSet, double[][]> stateSetEntry : dataMap.entrySet()) {
             dataSet.addSeries(stateSetEntry.getKey().toString(), stateSetEntry.getValue());
         }
-        JFreeChart chart = ChartFactory.createXYLineChart("sensor to belief mapping", "sensor value",
+        JFreeChart chart = ChartFactory.createXYLineChart(title, "sensor value",
                 "mass", dataSet);
         ChartPanel chartPanel = new ChartPanel(chart);
         ((XYPlot)chart.getPlot()).getRangeAxis().setRange(0,1);
@@ -48,13 +57,7 @@ public class JfreeChartDisplay1D {
 
     public static ChartPanel getChartPanel(SensorBeliefModel<Double> beliefModel, int numPoints, double min,
                                            double max) {
-        TreeMap<Double, MassFunction> massFunctionSet = new TreeMap<>();
-        Map<Double, MassFunction> syncMap = Collections.synchronizedMap(massFunctionSet);
-        IntStream.range(0, numPoints).parallel()
-                .mapToDouble(x -> min + (x * ((max-min) / numPoints)))
-                .forEach(value -> syncMap.put(value, beliefModel.toMass(value)));
-
-        return getChartPanel(massFunctionSet, beliefModel.getFrame());
+        return getChartPanel(beliefModel, numPoints, min, max, "sensor to belief mapping");
     }
 
     static private double[] sensorValueArray(Map<Double, MassFunction> masses) {
@@ -65,5 +68,16 @@ public class JfreeChartDisplay1D {
             index++;
         }
         return array;
+    }
+
+    public static ChartPanel getChartPanel(SensorBeliefModel<Double> beliefModel, int numPoints, double min,
+                                       double max, String title) {
+        TreeMap<Double, MassFunction> massFunctionSet = new TreeMap<>();
+        Map<Double, MassFunction> syncMap = Collections.synchronizedMap(massFunctionSet);
+        IntStream.range(0, numPoints).parallel()
+                .mapToDouble(x -> min + (x * ((max - min) / numPoints)))
+                .forEach(value -> syncMap.put(value, beliefModel.toMass(value)));
+
+        return getChartPanel(massFunctionSet, beliefModel.getFrame(), title);
     }
 }

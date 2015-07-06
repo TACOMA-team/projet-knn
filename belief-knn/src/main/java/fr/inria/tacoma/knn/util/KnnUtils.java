@@ -94,9 +94,9 @@ public class KnnUtils {
                                    SensorBeliefModel<T> model) {
         return crossValidation.stream().mapToDouble(point -> {
             MassFunction actualMassFunction = model.toMass(point.getValue());
-            MutableMass idealMassFunction = model.getFrame().newMass();
-            idealMassFunction.set(model.getFrame().toStateSet(point.getLabel()), 1);
-            idealMassFunction.putRemainingOnIgnorance();
+            MutableMass idealMassFunction = model.getFrame().newMass()
+                    .set(model.getFrame().toStateSet(point.getLabel()), 1)
+                    .putRemainingOnIgnorance();
             double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
             return distance * distance / crossValidation.size();
         }).sum();
@@ -198,7 +198,7 @@ public class KnnUtils {
     }
 
 
-    private static <T> Map<String,Double> generateGammaProvider(BiFunction<T, T, Double> distance,
+    public static <T> Map<String,Double> generateGammaProvider(BiFunction<T, T, Double> distance,
                                                          List<? extends LabelledPoint<T>> points) {
         Set<String> labels = new HashSet<>();
         points.forEach(p -> labels.add(p.getLabel()));

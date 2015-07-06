@@ -35,10 +35,10 @@ public class Main1D {
     public static final String PRESENCE_SAMPLE = "samples/sample-1/sensor-1/presence-motion1.json";
 
     public static void main(String[] args) throws IOException {
-        showGenerated();
-//        testKfold(5);
+//        showGenerated();
+        testKfold(5);
 //        printAbsenceAndPresenceDependingOnAlpha();
-//        testNormal();
+        testNormal();
     }
 
     private static void showGenerated() throws IOException {
@@ -55,6 +55,10 @@ public class Main1D {
         FrameOfDiscernment frame= FrameOfDiscernment.newFrame("generated", "A", "B", "C");
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
         Kfold<Double> kfold = new Kfold<>(factory, data, 5);
+
+
+//        displayTabsDependingOnK(frame, data);
+
         long start = System.nanoTime();
         SensorBeliefModel<Double> result = kfold.generateModel();
         long end = System.nanoTime();
@@ -102,7 +106,7 @@ public class Main1D {
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
         Kfold<Double> kfold = new Kfold<>(factory, data, k);
         SensorBeliefModel<Double> result = kfold.generateModel();
-        result = generateWeakeningModel(result, data);
+//        result = generateWeakeningModel(result, data);
         result = new ConsonantBeliefModel<>(result);
         System.out.println("error for best model k-fold : " + KnnUtils.error(data, result));
         show(result, data, "kfold k="+k);
@@ -113,10 +117,11 @@ public class Main1D {
                                         List<LabelledPoint<Double>> presence) {
         // extracting cross validation data
 
-        List<LabelledPoint<Double>> data = new ArrayList<>(absence);
-        data.addAll(presence);
         List<LabelledPoint<Double>> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
         crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
+
+        List<LabelledPoint<Double>> data = new ArrayList<>(absence);
+        data.addAll(presence);
 
         //creating training set
         List<LabelledPoint<Double>> trainingSet = new ArrayList<>();
@@ -125,7 +130,8 @@ public class Main1D {
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
         SensorBeliefModel<Double> result =
                 KnnUtils.getBestKnnBeliefForAlphaAndK(factory, trainingSet, crossValidation);
-        result = generateWeakeningModel(result, data);
+        show(result, data, "cross validation");
+//        result = generateWeakeningModel(result, data);
         result = new ConsonantBeliefModel<>(result);
         System.out.println("error for best model : " + KnnUtils.error(data, result));
         show(result, data, "cross validation");
@@ -148,29 +154,35 @@ public class Main1D {
     }
 
 
-//
-//    private static void displayTabsDependingOnK(FrameOfDiscernment frame,
-//                                                List<SensorValue> trainingSet) {
-//        JFrame windowFrame = new JFrame();
-//        windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-//        JTabbedPane tabbedPane = new JTabbedPane();
-//
-//        windowFrame.setContentPane(tabbedPane);
-//        windowFrame.setSize(800, 500);
-//        windowFrame.setVisible(true);
-//
-//        double min = trainingSet.stream().mapToDouble(SensorValue::getValue).min().getAsDouble();
-//        double max = trainingSet.stream().mapToDouble(SensorValue::getValue).max().getAsDouble();
-//        double margin = (max - min) * 0.1;
-//
-//        for (int neighborCount = 1; neighborCount <= trainingSet.size(); neighborCount++) {
-//            KnnBelief<Double>  beliefModel = new KnnBelief<>(trainingSet, neighborCount, ALPHA, frame,
-//                    KnnUtils::optimizedDuboisAndPrade, (a,b) -> Math.abs(a - b));
-//
-//            JPanel panel = JfreeChartDisplay1D.getChartPanel(beliefModel, 2000, min - margin, max + margin);
-//            tabbedPane.addTab("" + neighborCount, panel);
-//        }
-//    }
+
+    private static void displayTabsDependingOnK(FrameOfDiscernment frame,
+                                                List<LabelledPoint<Double>> trainingSet) {
+        JFrame windowFrame = new JFrame();
+        windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        JTabbedPane tabbedPane = new JTabbedPane();
+
+        windowFrame.setContentPane(tabbedPane);
+        windowFrame.setSize(800, 500);
+        windowFrame.setVisible(true);
+
+        double min = trainingSet.stream().mapToDouble(LabelledPoint::getValue).min().getAsDouble();
+        double max = trainingSet.stream().mapToDouble(LabelledPoint::getValue).max().getAsDouble();
+        double margin = (max - min) * 0.1;
+
+        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
+
+        Map<String, Double> gammas = KnnUtils
+                .generateGammaProvider((a, b) -> Math.abs(a - b), trainingSet);
+
+        for (int neighborCount = 1; neighborCount <= Math.min(100, trainingSet.size()); neighborCount++) {
+            KnnBelief<Double>  beliefModel =
+                    factory.newKnnBelief(trainingSet, gammas, neighborCount, ALPHA);
+
+            JPanel panel = JfreeChartDisplay1D.getChartPanel(beliefModel, 2000, min - margin,
+                    max + margin, "belief mapping, " + KnnUtils.error(trainingSet, beliefModel));
+            tabbedPane.addTab("" + neighborCount, panel);
+        }
+    }
 
     /**
      * Parse the given file to extract points. One file is expected to contain only one sensor.
