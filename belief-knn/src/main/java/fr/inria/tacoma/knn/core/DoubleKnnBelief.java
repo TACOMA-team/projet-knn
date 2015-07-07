@@ -24,14 +24,27 @@ public class DoubleKnnBelief implements KnnBelief<Double> {
                      Function<List<MassFunction>, MassFunction> combination,
                      BiFunction<Double, Double, Double> distance,
                      Map<String,Double> gammaProvider) {
+        this(points, k, alpha, frame, combination, distance, gammaProvider, false);
+    }
+
+    private DoubleKnnBelief(List<LabelledPoint<Double>> points, int k, double alpha,
+                           FrameOfDiscernment frame,
+                           Function<List<MassFunction>, MassFunction> combination,
+                           BiFunction<Double, Double, Double> distance,
+                           Map<String,Double> gammaProvider, boolean sorted) {
         this.k = k;
         this.alpha = alpha;
         this.frame = frame;
         this.combination = combination;
-        this.sortedPoints = new ArrayList<>(points);
-        Collections.sort(sortedPoints, (p1,p2) -> Double.compare(p1.getValue(), p2.getValue()));
         this.distance = distance;
         this.gammaProvider = gammaProvider;
+        if(sorted) {
+            this.sortedPoints = points;
+        }
+        else {
+            this.sortedPoints = new ArrayList<>(points);
+            Collections.sort(sortedPoints, (p1,p2) -> Double.compare(p1.getValue(), p2.getValue()));
+        }
     }
 
     private List<LabelledPoint<Double>> knn(Double value) {
@@ -72,7 +85,7 @@ public class DoubleKnnBelief implements KnnBelief<Double> {
     private MassFunction getMassFunction(Double value, LabelledPoint<Double> point) {
         MutableMass mass = frame.newMass();
         double gamma = 1.0 / gammaProvider.get(point.getLabel());
-        mass.addToFocal(frame.toStateSet(point.getLabel()),
+        mass.addToFocal(point.getStateSet(),
                 alpha * Math.exp(-distance.apply(value, point.getValue()) * gamma));
         mass.putRemainingOnIgnorance();
         return mass;
@@ -90,17 +103,20 @@ public class DoubleKnnBelief implements KnnBelief<Double> {
 
     @Override
     public KnnBelief<Double> withAlpha(double newAlpha) {
-        return new DoubleKnnBelief(sortedPoints, k, newAlpha, frame, combination, distance, gammaProvider);
+        return new DoubleKnnBelief(sortedPoints, k, newAlpha, frame, combination, distance,
+                gammaProvider, true);
     }
 
     @Override
     public KnnBelief<Double> withK(int newK) {
-        return new DoubleKnnBelief(sortedPoints, newK, alpha, frame, combination, distance, gammaProvider);
+        return new DoubleKnnBelief(sortedPoints, newK, alpha, frame, combination, distance,
+                gammaProvider, true);
     }
 
     @Override
     public KnnBelief<Double> withAlphaAndK(double newAlpha, int newK) {
-        return new DoubleKnnBelief(sortedPoints, newK, newAlpha, frame, combination, distance, gammaProvider);
+        return new DoubleKnnBelief(sortedPoints, newK, newAlpha, frame, combination, distance,
+                gammaProvider, true);
     }
 
     @Override

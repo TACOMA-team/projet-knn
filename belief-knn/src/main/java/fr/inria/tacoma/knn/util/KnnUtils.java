@@ -1,6 +1,7 @@
 package fr.inria.tacoma.knn.util;
 
 import fr.inria.tacoma.bft.combinations.Combinations;
+import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MutableMass;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
@@ -17,6 +18,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class KnnUtils {
+
+    public static final double NEWTON_STEP = 0.0001;
 
     /**
      * Extract the end of a list and returns the extracted list. The items will
@@ -61,21 +64,20 @@ public class KnnUtils {
      * @return fused mass function
      */
     public static MassFunction optimizedDuboisAndPrade(List<MassFunction> masses) {
-        List<MassFunction> optimizedMasses = new ArrayList<>(masses);
-        for (int refMassIndex = 0; refMassIndex < optimizedMasses.size(); refMassIndex++) {
-            MassFunction referenceMass = optimizedMasses.get(refMassIndex);
-            for (int j = refMassIndex + 1; j < optimizedMasses.size(); ) {
-                MassFunction mass2 = optimizedMasses.get(j);
-                if (referenceMass.getFocalStateSets().equals(mass2.getFocalStateSets())) {
-                    referenceMass = Combinations.dempster(referenceMass, mass2);
-                    optimizedMasses.remove(j);
-                } else {
-                    j++;
+        Map<Set<StateSet>, MassFunction> optimized = new HashMap<>();
+
+        for (MassFunction mass : masses) {
+            optimized.compute(mass.getFocalStateSets(), (k,v) -> {
+                if(v == null) {
+                    return mass;
                 }
-            }
-            optimizedMasses.set(refMassIndex, referenceMass);
+                else {
+                    return Combinations.dempster(mass, v);
+                }
+            });
         }
-        return Combinations.duboisAndPrade(optimizedMasses);
+
+        return Combinations.duboisAndPrade(new ArrayList<>(optimized.values()));
     }
 
     /**
@@ -92,14 +94,15 @@ public class KnnUtils {
      */
     public static <T> double error(List<? extends LabelledPoint<T>> crossValidation,
                                    SensorBeliefModel<T> model) {
+        int size = crossValidation.size();
         return crossValidation.stream().mapToDouble(point -> {
             MassFunction actualMassFunction = model.toMass(point.getValue());
             MutableMass idealMassFunction = model.getFrame().newMass()
-                    .set(model.getFrame().toStateSet(point.getLabel()), 1)
-                    .putRemainingOnIgnorance();
+                    .set(point.getStateSet(), 1);
             double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
-            return distance * distance / crossValidation.size();
-        }).sum();
+            return distance * distance;
+        }).sum() / size;
+
     }
 
 
@@ -123,6 +126,7 @@ public class KnnUtils {
         double lowestError = Double.POSITIVE_INFINITY;
         for (KnnBelief<T> model : models) {
             double error = KnnUtils.error(crossValidation, model);
+//            System.out.println(error);
             if (error < lowestError) {
                 lowestError = error;
                 bestModel = model;
@@ -130,9 +134,9 @@ public class KnnUtils {
         }
 
         assert bestModel != null;
-//        System.out.println("lowest error: " + lowestError);
-//        System.out.println("bestNeighborCount: " + bestModel.getK());
-//        System.out.println("best alpha: " + bestModel.getAlpha());
+        System.out.println("lowest error: " + lowestError);
+        System.out.println("bestNeighborCount: " + bestModel.getK());
+        System.out.println("best alpha: " + bestModel.getAlpha());
         return bestModel;
     }
 
@@ -140,9 +144,9 @@ public class KnnUtils {
                                                             List<? extends LabelledPoint<T>> points,
                                                             List<? extends LabelledPoint<T>> crossValidation,
                                                             int maxNeighborCount) {
-        return IntStream.range(1, maxNeighborCount).limit(100).parallel().mapToObj(
-                    k -> getBestModelForFixedK(factory, points, crossValidation, k)
-            ).collect(Collectors.toList());
+        return IntStream.range(2, maxNeighborCount).limit(100).mapToObj(
+                k -> getBestModelForFixedKNewton(factory, points, crossValidation, k)
+        ).collect(Collectors.toList());
     }
 
     private static <T> KnnBelief<T> getBestModelForFixedK(KnnFactory<T> factory,
@@ -156,12 +160,70 @@ public class KnnUtils {
             double alpha = 0.01 * i;
             KnnBelief<T> beliefModel = factory.newKnnBelief(points, gammas, k, alpha);
             double error = KnnUtils.error(crossValidation, beliefModel);
+//            System.out.println(alpha+";"+error);
             if (error < lowestError) {
                 lowestError = error;
                 model = beliefModel;
             }
         }
         return model;
+    }
+
+    private static <T> KnnBelief<T> getBestModelForFixedKNewton(KnnFactory<T> factory,
+                                                          List<? extends LabelledPoint<T>> points,
+                                                          List<? extends LabelledPoint<T>> crossValidation,
+                                                          int k) {
+        Map<String, Double> gammas = generateGammaProvider(factory.getDistance(), points);
+        KnnBelief<T> model = null;
+        double alpha = 0.05;
+        int iterations = 0;
+        double stopCriteria = 0.001;
+        double variation = 1;
+//        System.out.println("k=" + k);
+        while(iterations < 10 && Math.abs(variation) > stopCriteria) {
+            model = factory.newKnnBelief(points, gammas, k, alpha);
+            variation = computeVariation(crossValidation, model, alpha);
+//            System.out.println(alpha + " - " + variation + " -> " +  (alpha - variation));
+            alpha = alpha - variation;
+            if(alpha < 0) {
+                alpha = 2.0 * NEWTON_STEP;
+            }
+            else if(alpha > 1) {
+                alpha = 1.0 - NEWTON_STEP;
+            }
+            iterations++;
+        }
+//        System.out.println();
+        return factory.newKnnBelief(points, gammas, k, alpha);
+    }
+
+    private static <T> double computeVariation(List<? extends LabelledPoint<T>> crossValidation,
+                                               KnnBelief<T> model, double alpha) {
+
+//        try {
+
+            double errorLeft = KnnUtils.error(crossValidation, model.withAlpha(alpha - NEWTON_STEP));
+            double errorRight = KnnUtils.error(crossValidation, model.withAlpha(alpha + NEWTON_STEP));
+            double errorCenter = KnnUtils.error(crossValidation, model.withAlpha(alpha));
+
+            double diffCenter = (errorRight - errorLeft) / (2 * NEWTON_STEP);
+            double secondOrder = (errorRight + errorLeft - 2 * errorCenter) / (NEWTON_STEP * NEWTON_STEP);
+            return diffCenter / secondOrder;
+//        }
+//        catch (Exception e) {
+//            printErrorForModel(crossValidation, model);
+//            throw e;
+//        }
+    }
+
+    private static <T> void printErrorForModel(List<? extends LabelledPoint<T>> crossValidation,
+                                               KnnBelief<T> model) {
+        for (int i = 1; i < 100; i++) {
+            double alpha1 = 0.01 * i;
+            KnnBelief<T> beliefModel = model.withAlpha(alpha1);
+            double error = KnnUtils.error(crossValidation, beliefModel);
+        System.out.println(alpha1+";"+error);
+        }
     }
 
     /**
@@ -223,5 +285,4 @@ public class KnnUtils {
         }
         return gammas;
     }
-
 }

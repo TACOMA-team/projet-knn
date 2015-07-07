@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.criteria.Criteria;
@@ -20,9 +21,13 @@ import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
 
 import javax.swing.*;
+import java.awt.*;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.util.*;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,26 +40,28 @@ public class Main1D {
     public static final String PRESENCE_SAMPLE = "samples/sample-1/sensor-1/presence-motion1.json";
 
     public static void main(String[] args) throws IOException {
+//        System.in.read();
 //        showGenerated();
         testKfold(5);
 //        printAbsenceAndPresenceDependingOnAlpha();
-        testNormal();
+//        testNormal();
     }
 
     private static void showGenerated() throws IOException {
+        FrameOfDiscernment frame= FrameOfDiscernment.newFrame("generated", "A", "B", "C");
         List<LabelledPoint<Double>> pointsA =
-                getPoints("A", "samples/sample-5/sensor-0/A-sensor0.json");
+                getPoints("A", "samples/sample-6/sensor-0/A-sensor0.json", frame);
         List<LabelledPoint<Double>> pointsB =
-                getPoints("B", "samples/sample-5/sensor-0/B-sensor0.json");
+                getPoints("B", "samples/sample-6/sensor-0/B-sensor0.json", frame);
         List<LabelledPoint<Double>> pointsC =
-                getPoints("C", "samples/sample-5/sensor-0/C-sensor0.json");
+                getPoints("C", "samples/sample-6/sensor-0/C-sensor0.json", frame);
 
         List<LabelledPoint<Double>> data = new ArrayList<>(pointsA);
         data.addAll(pointsB);
         data.addAll(pointsC);
-        FrameOfDiscernment frame= FrameOfDiscernment.newFrame("generated", "A", "B", "C");
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
-        Kfold<Double> kfold = new Kfold<>(factory, data, 5);
+//        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
+        Kfold<Double> kfold = new Kfold<>(factory, data, 3);
 
 
 //        displayTabsDependingOnK(frame, data);
@@ -65,6 +72,11 @@ public class Main1D {
         System.out.println("generated kfold model in " + ((double) end - (double)start) / 1000000000 + "s");
 
         show(result, data, "kfold generated");
+
+//        PrintStream printStream = new PrintStream(new FileOutputStream("generated.csv"));
+//        BeliefModelPrinter.printSensorBeliefAsCSV(result, printStream, 0, 1000, 1000);
+//        printStream.close();
+
         //result = generateWeakeningModel(result, data);
         result = new ConsonantBeliefModel<>(result);
         show(result, data, "kfold generated consonant");
@@ -75,8 +87,8 @@ public class Main1D {
 
         String absenceFile = ABSENCE_SAMPLE;
         String presenceFile = PRESENCE_SAMPLE;
-        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile);
-        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile);
+        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile, frame);
+        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile, frame);
 
         System.out.println(
                 "using " + absenceFile + " for absence and " + presenceFile + " for presence");
@@ -91,8 +103,8 @@ public class Main1D {
 
         String absenceFile = ABSENCE_SAMPLE;
         String presenceFile = PRESENCE_SAMPLE;
-        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile);
-        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile);
+        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile, frame);
+        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile, frame);
 
         System.out.println(
                 "using " + absenceFile + " for absence and " + presenceFile + " for presence");
@@ -104,12 +116,13 @@ public class Main1D {
         data.addAll(presence);
 
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
+        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
         Kfold<Double> kfold = new Kfold<>(factory, data, k);
         SensorBeliefModel<Double> result = kfold.generateModel();
-//        result = generateWeakeningModel(result, data);
         result = new ConsonantBeliefModel<>(result);
+        result = generateWeakeningModel(result, data);
         System.out.println("error for best model k-fold : " + KnnUtils.error(data, result));
-        show(result, data, "kfold k="+k);
+        show(result, data, "kfold k=" + k);
         showErrors(result, data);
     }
 
@@ -192,7 +205,8 @@ public class Main1D {
      * @return list of points in the file
      * @throws IOException
      */
-    private static List<LabelledPoint<Double>> getPoints(String label, String file) throws IOException {
+    private static List<LabelledPoint<Double>> getPoints(String label, String file,
+                                                         FrameOfDiscernment frame) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
         InputStream resourceAsStream = Thread.currentThread().getContextClassLoader()
@@ -204,6 +218,7 @@ public class Main1D {
         while (iterator.hasNext()) {
             SensorValue next = iterator.next();
             next.setLabel(label);
+            next.setStateSet(frame.toStateSet(next.getLabel()));
             points.add(next);
         }
         return points;

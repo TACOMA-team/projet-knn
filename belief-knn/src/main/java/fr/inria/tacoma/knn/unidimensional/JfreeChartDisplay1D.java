@@ -57,7 +57,7 @@ public class JfreeChartDisplay1D {
 
     public static ChartPanel getChartPanel(SensorBeliefModel<Double> beliefModel, int numPoints, double min,
                                            double max) {
-        return getChartPanel(beliefModel, numPoints, min, max, "sensor to belief mapping");
+        return getChartPanel(beliefModel, numPoints, min, max, DEFAULT_TITLE);
     }
 
     static private double[] sensorValueArray(Map<Double, MassFunction> masses) {
