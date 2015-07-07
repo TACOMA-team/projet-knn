@@ -1,0 +1,4 @@
+generated sample.
+state A is a normal gaussian distribution with standard dev 100 and mean 300
+B with standard dev 100 and mean 600
+C with standard dev 100 and mean 700
