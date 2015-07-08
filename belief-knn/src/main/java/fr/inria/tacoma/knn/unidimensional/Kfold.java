@@ -10,6 +10,8 @@ import fr.inria.tacoma.knn.util.KnnUtils;
 
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Kfold<T> {
 
@@ -27,9 +29,11 @@ public class Kfold<T> {
     }
 
     public SensorBeliefModel<T> generateModel() {
-        List<LabelledPoint<T>> shuffled = new ArrayList<>(samples);
-        Collections.shuffle(shuffled, random);
-        List<List<LabelledPoint<T>>> sublists = KnnUtils.split(shuffled, k);
+//        List<LabelledPoint<T>> shuffled = new ArrayList<>(samples);
+//        Collections.shuffle(shuffled, random);
+//        List<List<LabelledPoint<T>>> sublists = KnnUtils.split(shuffled, k);
+        List<List<LabelledPoint<T>>> sublists = createSubLists(samples, k);
+
         List<SensorBeliefModel<T>> models = new ArrayList<>(k);
 
         for (int validationIndex = 0; validationIndex < k; validationIndex++) {
@@ -48,5 +52,21 @@ public class Kfold<T> {
         return new AveragingBeliefModel<>(models);
     }
 
+    private <T> List<List<T>> createSubLists(List<T> list, int nb) {
+        List<List<T>> sublists = new ArrayList<>();
+        for (int i = 0; i < nb; i++) {
+            sublists.add(new ArrayList<>());
+        }
+
+        int sublistIndex = 0;
+        for (T object : list) {
+            sublists.get(sublistIndex).add(object);
+            sublistIndex++;
+            if(sublistIndex >= sublists.size()) {
+                sublistIndex = 0;
+            }
+        }
+        return sublists;
+    }
 
 }
