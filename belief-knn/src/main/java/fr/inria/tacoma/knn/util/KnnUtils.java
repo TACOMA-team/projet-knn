@@ -20,6 +20,7 @@ import java.util.stream.IntStream;
 public class KnnUtils {
 
     public static final double NEWTON_STEP = 0.0001;
+    public static final double MAX_ALPHA = 0.9;
 
     /**
      * Extract the end of a list and returns the extracted list. The items will
@@ -113,6 +114,7 @@ public class KnnUtils {
         return KnnUtils.getBestKnnBeliefWithFixedAlpha(factory, points, crossValidation, alpha,
                 points.size() - 1);
     }
+
     public static <T> KnnBelief<T> getBestKnnBeliefForAlphaAndK(KnnFactory<T> factory,
             List<LabelledPoint<T>> points,
             List<LabelledPoint<T>> crossValidation) {
@@ -169,7 +171,7 @@ public class KnnUtils {
         return model;
     }
 
-    private static <T> KnnBelief<T> getBestModelForFixedKNewton(KnnFactory<T> factory,
+    public static <T> KnnBelief<T> getBestModelForFixedKNewton(KnnFactory<T> factory,
                                                           List<? extends LabelledPoint<T>> points,
                                                           List<? extends LabelledPoint<T>> crossValidation,
                                                           int k) {
@@ -185,11 +187,11 @@ public class KnnUtils {
             variation = computeVariation(crossValidation, model, alpha);
 //            System.out.println(alpha + " - " + variation + " -> " +  (alpha - variation));
             alpha = alpha - variation;
-            if(alpha < 0) {
+            if(alpha < NEWTON_STEP) {
                 alpha = 2.0 * NEWTON_STEP;
             }
-            else if(alpha > 1) {
-                alpha = 1.0 - NEWTON_STEP;
+            else if(alpha > MAX_ALPHA) {
+                alpha = MAX_ALPHA;
             }
             iterations++;
         }
@@ -281,7 +283,7 @@ public class KnnUtils {
                 }
             }
             average = average.divide(new BigDecimal(size * (size - 1)), new MathContext(10));
-            gammas.put(label, average.doubleValue());
+            gammas.put(label, 1 * average.doubleValue());
         }
         return gammas;
     }
