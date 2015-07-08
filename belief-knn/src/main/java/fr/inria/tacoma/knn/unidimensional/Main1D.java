@@ -15,17 +15,13 @@ import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.core.KnnFactory;
 import fr.inria.tacoma.knn.core.LabelledPoint;
-import fr.inria.tacoma.knn.util.ConsonantBeliefModel;
 import fr.inria.tacoma.knn.util.DiscountingBeliefModel;
 import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
 
 import javax.swing.*;
-import java.awt.*;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintStream;
 import java.util.*;
 import java.util.List;
 import java.util.function.Function;
@@ -47,39 +43,40 @@ public class Main1D {
 //        testNormal();
     }
 
+    private static SensorBeliefModel<Double> modelForFiles(FrameOfDiscernment frame,
+                                                           KnnFactory factory, int foldNb,
+                                                           String... files)
+            throws IOException {
+        List<LabelledPoint<Double>> data = parseData(frame, files);
+        Kfold<Double> kfold = new Kfold<>(factory, data, foldNb);
+
+        return kfold.generateModel();
+    }
+
+    private static List<LabelledPoint<Double>> parseData(FrameOfDiscernment frame,
+                                                         String... files) throws IOException {
+        List<LabelledPoint<Double>> data = new ArrayList<>();
+        for (String file : files) {
+            int fileOffSet = file.lastIndexOf('/');
+            String label = file.substring(fileOffSet + 1, file.indexOf('-', fileOffSet));
+            data.addAll(getPoints(label, file, frame));
+        }
+        return data;
+    }
+
     private static void showGenerated() throws IOException {
         FrameOfDiscernment frame= FrameOfDiscernment.newFrame("generated", "A", "B", "C");
-        List<LabelledPoint<Double>> pointsA =
-                getPoints("A", "samples/sample-6/sensor-0/A-sensor0.json", frame);
-        List<LabelledPoint<Double>> pointsB =
-                getPoints("B", "samples/sample-6/sensor-0/B-sensor0.json", frame);
-        List<LabelledPoint<Double>> pointsC =
-                getPoints("C", "samples/sample-6/sensor-0/C-sensor0.json", frame);
 
-        List<LabelledPoint<Double>> data = new ArrayList<>(pointsA);
-        data.addAll(pointsB);
-        data.addAll(pointsC);
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
 //        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
-        Kfold<Double> kfold = new Kfold<>(factory, data, 3);
+        SensorBeliefModel<Double> model = modelForFiles(frame,
+                factory, 5,
+                "samples/sample-6/sensor-0/A-sensor0.json",
+                "samples/sample-6/sensor-0/B-sensor0.json",
+                "samples/sample-6/sensor-0/C-sensor0.json");
+//        model = new ConsonantBeliefModel<>(model);
+        show(model, "generated kfold", 0 , 1000);
 
-
-//        displayTabsDependingOnK(frame, data);
-
-        long start = System.nanoTime();
-        SensorBeliefModel<Double> result = kfold.generateModel();
-        long end = System.nanoTime();
-        System.out.println("generated kfold model in " + ((double) end - (double)start) / 1000000000 + "s");
-
-        show(result, data, "kfold generated");
-
-//        PrintStream printStream = new PrintStream(new FileOutputStream("generated.csv"));
-//        BeliefModelPrinter.printSensorBeliefAsCSV(result, printStream, 0, 1000, 1000);
-//        printStream.close();
-
-        //result = generateWeakeningModel(result, data);
-        result = new ConsonantBeliefModel<>(result);
-        show(result, data, "kfold generated consonant");
     }
 
     private static void testNormal() throws IOException {
@@ -103,27 +100,17 @@ public class Main1D {
 
         String absenceFile = ABSENCE_SAMPLE;
         String presenceFile = PRESENCE_SAMPLE;
-        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile, frame);
-        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile, frame);
 
-        System.out.println(
-                "using " + absenceFile + " for absence and " + presenceFile + " for presence");
-//        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
-//        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
-
-        List<LabelledPoint<Double>> data = new ArrayList<>();
-        data.addAll(absence);
-        data.addAll(presence);
-
+        System.out.println("using " + absenceFile + " for absence and " + presenceFile +
+                " for presence");
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
-        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
-        Kfold<Double> kfold = new Kfold<>(factory, data, k);
-        SensorBeliefModel<Double> result = kfold.generateModel();
-        result = new ConsonantBeliefModel<>(result);
-        result = generateWeakeningModel(result, data);
-        System.out.println("error for best model k-fold : " + KnnUtils.error(data, result));
-        show(result, data, "kfold k=" + k);
-        showErrors(result, data);
+        SensorBeliefModel<Double> model = modelForFiles(frame, factory, k, ABSENCE_SAMPLE,
+                PRESENCE_SAMPLE);
+        show(model, "k fold generated", 0, 4096);
+        List<LabelledPoint<Double>> validation = parseData(frame, ABSENCE_SAMPLE,
+                PRESENCE_SAMPLE);
+        showErrors(model, validation);
+        show(generateWeakeningModel(model, validation), "weakened", 0, 4096);
     }
 
     private static void crossValidation(FrameOfDiscernment frame, List<LabelledPoint<Double>> absence,
@@ -141,14 +128,15 @@ public class Main1D {
         trainingSet.addAll(absence);
         trainingSet.addAll(presence);
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
+        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
         SensorBeliefModel<Double> result =
                 KnnUtils.getBestKnnBeliefForAlphaAndK(factory, trainingSet, crossValidation);
         show(result, data, "cross validation");
 //        result = generateWeakeningModel(result, data);
-        result = new ConsonantBeliefModel<>(result);
-        System.out.println("error for best model : " + KnnUtils.error(data, result));
-        show(result, data, "cross validation");
-        showErrors(result, data);
+//        result = new ConsonantBeliefModel<>(result);
+//        System.out.println("error for best model : " + KnnUtils.error(data, result));
+//        show(result, data, "cross validation");
+//        showErrors(result, data);
     }
 
 
@@ -229,7 +217,12 @@ public class Main1D {
                              String title) {
         double min = points.stream().mapToDouble(LabelledPoint::getValue).min().getAsDouble();
         double max = points.stream().mapToDouble(LabelledPoint::getValue).max().getAsDouble();
-        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, min , max);
+        show(model, title, min, max);
+    }
+
+    private static void show(SensorBeliefModel<Double> model, String title, double min,
+                             double max) {
+        ChartPanel chartPanel = JfreeChartDisplay1D.getChartPanel(model, 2000, min, max);
         JFrame windowFrame = new JFrame();
         windowFrame.setTitle(title);
         windowFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -248,6 +241,10 @@ public class Main1D {
                 new DiscountingBeliefModel(model, weakeningFunction);
 
         Map<String, Double> standardDevs = getStandardDevs(crossValidation);
+
+        //FIXME This weakening is arbitrary
+        final double baseWeakening = 0.1;
+        double weakening = 0.1;
         for (LabelledPoint<Double> sensorValue : crossValidation) {
             Decision decision = decisionStrategy.decide(
                     discountingBeliefModel.toMass(sensorValue.getValue()));
@@ -255,10 +252,12 @@ public class Main1D {
             StateSet expectedDecision = model.getFrame().toStateSet(sensorValue.getLabel());
 
             if (!actualDecision.includesOrEquals(expectedDecision)) {
+
                 System.out.println("bad decision for value: " + sensorValue.getValue());
-                //FIXME This weakening is arbitrary
-                double weakening = 0.5;
-                weakeningFunction.addWeakeningPoint(sensorValue.getValue(), weakening,
+                System.out.println(
+                        "actualDecision=" + actualDecision + " real = " + expectedDecision);
+                System.out.println(decision);
+                weakeningFunction.putWeakeningPoint(sensorValue.getValue(), weakening,
                         standardDevs.get(sensorValue.getLabel()));
             }
         }
@@ -325,7 +324,7 @@ public class Main1D {
         private Map<Double, Double> alphas = new HashMap<>();
         private Map<Double, Double> stdDevs = new HashMap<>();
 
-        public void addWeakeningPoint(double center, double weakening, double amplitude) {
+        public void putWeakeningPoint(double center, double weakening, double amplitude) {
             alphas.put(center, weakening);
             stdDevs.put(center, amplitude);
         }
