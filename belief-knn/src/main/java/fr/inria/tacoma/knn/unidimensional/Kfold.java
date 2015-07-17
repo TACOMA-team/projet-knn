@@ -15,20 +15,8 @@ import java.util.stream.IntStream;
 
 public class Kfold<T> {
 
-    private final List<LabelledPoint<T>> samples;
-    private final int k;
-    private final Random random;
-    private final KnnFactory<T> factory;
-
-
-    public Kfold(KnnFactory<T> factory, List<LabelledPoint<T>> samples, int k) {
-        this.samples = samples;
-        this.k = k;
-        this.factory = factory;
-        this.random = new Random();
-    }
-
-    public SensorBeliefModel<T> generateModel() {
+    public static  <T> SensorBeliefModel<T> generateModel(KnnFactory<T> factory,
+                                                     List<LabelledPoint<T>> samples, int k) {
 //        List<LabelledPoint<T>> shuffled = new ArrayList<>(samples);
 //        Collections.shuffle(shuffled, random);
 //        List<List<LabelledPoint<T>>> sublists = KnnUtils.split(shuffled, k);
@@ -52,7 +40,7 @@ public class Kfold<T> {
         return new AveragingBeliefModel<>(models);
     }
 
-    private <T> List<List<T>> createSubLists(List<T> list, int nb) {
+    private static <T> List<List<T>> createSubLists(List<T> list, int nb) {
         List<List<T>> sublists = new ArrayList<>();
         for (int i = 0; i < nb; i++) {
             sublists.add(new ArrayList<>());

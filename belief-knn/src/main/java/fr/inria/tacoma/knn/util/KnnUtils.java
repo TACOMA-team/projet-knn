@@ -1,6 +1,11 @@
 package fr.inria.tacoma.knn.util;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MappingIterator;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.inria.tacoma.bft.combinations.Combinations;
+import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MutableMass;
@@ -9,11 +14,16 @@ import fr.inria.tacoma.bft.util.Mass;
 import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.core.KnnFactory;
 import fr.inria.tacoma.knn.core.LabelledPoint;
+import fr.inria.tacoma.knn.unidimensional.SensorValue;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -57,7 +67,7 @@ public class KnnUtils {
 
 
     /**
-     * An hybrid fusion mecanism which apply dempster for every points with the same label, end the
+     * An hybrid fusion mechanism which apply dempster for every points with the same label, end the
      * fuse the resulting mass functions with dubois and prade. This allow to perform a very
      * efficient dubois and prade.
      *
@@ -101,7 +111,7 @@ public class KnnUtils {
             MutableMass idealMassFunction = model.getFrame().newMass()
                     .set(point.getStateSet(), 1);
             double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
-            return distance * distance;
+            return Math.pow(distance, 2);
         }).sum() / size;
 
     }
@@ -218,13 +228,13 @@ public class KnnUtils {
 //        }
     }
 
-    private static <T> void printErrorForModel(List<? extends LabelledPoint<T>> crossValidation,
-                                               KnnBelief<T> model) {
+    public static <T> void printErrorForModel(List<? extends LabelledPoint<T>> crossValidation,
+                                               KnnBelief<T> model, PrintWriter writer) {
         for (int i = 1; i < 100; i++) {
             double alpha1 = 0.01 * i;
             KnnBelief<T> beliefModel = model.withAlpha(alpha1);
             double error = KnnUtils.error(crossValidation, beliefModel);
-        System.out.println(alpha1+";"+error);
+            writer.println(alpha1+";"+error);
         }
     }
 
@@ -283,8 +293,66 @@ public class KnnUtils {
                 }
             }
             average = average.divide(new BigDecimal(size * (size - 1)), new MathContext(10));
-            gammas.put(label, 1 * average.doubleValue());
+            gammas.put(label, average.doubleValue());
         }
         return gammas;
+    }
+
+    public static List<LabelledPoint<Double>> parseData(FrameOfDiscernment frame,
+                                                        String... files) throws IOException {
+        List<LabelledPoint<Double>> data = new ArrayList<>();
+        for (String file : files) {
+            int fileOffSet = file.lastIndexOf('/');
+            String label = file.substring(fileOffSet + 1, file.indexOf('-', fileOffSet));
+            data.addAll(getPoints(label, file, frame));
+        }
+        return data;
+    }
+
+    public static List<LabelledPoint<Double>> parseData(FrameOfDiscernment frame,
+                                                        Function<List<LabelledPoint<Double>>, List<LabelledPoint<Double>>> transformation,
+                                                        String... files) throws IOException {
+        List<LabelledPoint<Double>> data = new ArrayList<>();
+        for (String file : files) {
+            int fileOffSet = file.lastIndexOf('/');
+            String label = file.substring(fileOffSet + 1, file.indexOf('-', fileOffSet));
+            data.addAll(getPoints(label, file, frame, transformation));
+        }
+        return data;
+    }
+
+    /**
+     * Parse the given file to extract points. One file is expected to contain only one sensor.
+     *
+     * @param label state in which the sample was take (i.e. presence or absence)
+     * @param file  path to the file
+     * @return list of points in the file
+     * @throws IOException
+     */
+    public static List<LabelledPoint<Double>> getPoints(String label, String file,
+                                                        FrameOfDiscernment frame) throws IOException {
+        return getPoints(label, file, frame, list -> list);
+    }
+
+    private static List<LabelledPoint<Double>> getPoints(String label, String file,
+                                                         FrameOfDiscernment frame,
+                                                         Function<List<LabelledPoint<Double>>,
+                                                                 List<LabelledPoint<Double>>> transformation)
+            throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
+        InputStream resourceAsStream = Thread.currentThread().getContextClassLoader()
+                .getResourceAsStream(file);
+        MappingIterator<SensorValue> iterator = mapper.readValues(
+                new JsonFactory().createParser(resourceAsStream),
+                SensorValue.class);
+        List<LabelledPoint<Double>> points = new ArrayList<>();
+        while (iterator.hasNext()) {
+            SensorValue next = iterator.next();
+            next.setLabel(label);
+            next.setStateSet(frame.toStateSet(next.getLabel()));
+            points.add(next);
+        }
+        return transformation.apply(points);
     }
 }

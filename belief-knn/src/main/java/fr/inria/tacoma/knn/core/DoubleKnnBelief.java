@@ -32,6 +32,7 @@ public class DoubleKnnBelief implements KnnBelief<Double> {
                            Function<List<MassFunction>, MassFunction> combination,
                            BiFunction<Double, Double, Double> distance,
                            Map<String,Double> gammaProvider, boolean sorted) {
+        assert alpha > 0;
         this.k = k;
         this.alpha = alpha;
         this.frame = frame;
@@ -86,7 +87,7 @@ public class DoubleKnnBelief implements KnnBelief<Double> {
         MutableMass mass = frame.newMass();
         double gamma = 1.0 / gammaProvider.get(point.getLabel());
         mass.addToFocal(point.getStateSet(),
-                alpha * Math.exp(-distance.apply(value, point.getValue()) * gamma));
+                alpha * Math.exp(- distance.apply(value, point.getValue()) * gamma));
         mass.putRemainingOnIgnorance();
         return mass;
     }

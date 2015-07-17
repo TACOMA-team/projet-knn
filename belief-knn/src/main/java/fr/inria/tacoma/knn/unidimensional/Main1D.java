@@ -1,9 +1,5 @@
 package fr.inria.tacoma.knn.unidimensional;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.MappingIterator;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
@@ -15,13 +11,15 @@ import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.core.KnnFactory;
 import fr.inria.tacoma.knn.core.LabelledPoint;
+import fr.inria.tacoma.knn.util.ConsonantBeliefModel;
 import fr.inria.tacoma.knn.util.DiscountingBeliefModel;
 import fr.inria.tacoma.knn.util.KnnUtils;
 import org.jfree.chart.ChartPanel;
 
 import javax.swing.*;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.PrintStream;
 import java.util.*;
 import java.util.List;
 import java.util.function.Function;
@@ -38,30 +36,9 @@ public class Main1D {
     public static void main(String[] args) throws IOException {
 //        System.in.read();
 //        showGenerated();
-        testKfold(5);
+        testKfold(3);
 //        printAbsenceAndPresenceDependingOnAlpha();
 //        testNormal();
-    }
-
-    private static SensorBeliefModel<Double> modelForFiles(FrameOfDiscernment frame,
-                                                           KnnFactory factory, int foldNb,
-                                                           String... files)
-            throws IOException {
-        List<LabelledPoint<Double>> data = parseData(frame, files);
-        Kfold<Double> kfold = new Kfold<>(factory, data, foldNb);
-
-        return kfold.generateModel();
-    }
-
-    private static List<LabelledPoint<Double>> parseData(FrameOfDiscernment frame,
-                                                         String... files) throws IOException {
-        List<LabelledPoint<Double>> data = new ArrayList<>();
-        for (String file : files) {
-            int fileOffSet = file.lastIndexOf('/');
-            String label = file.substring(fileOffSet + 1, file.indexOf('-', fileOffSet));
-            data.addAll(getPoints(label, file, frame));
-        }
-        return data;
     }
 
     private static void showGenerated() throws IOException {
@@ -69,14 +46,16 @@ public class Main1D {
 
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
 //        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
-        SensorBeliefModel<Double> model = modelForFiles(frame,
-                factory, 5,
+        List<LabelledPoint<Double>> data = KnnUtils.parseData(frame,
                 "samples/sample-6/sensor-0/A-sensor0.json",
                 "samples/sample-6/sensor-0/B-sensor0.json",
                 "samples/sample-6/sensor-0/C-sensor0.json");
-//        model = new ConsonantBeliefModel<>(model);
-        show(model, "generated kfold", 0 , 1000);
-
+        SensorBeliefModel<Double> model = Kfold.generateModel(factory, data, 3);
+        model = new ConsonantBeliefModel<>(model);
+        show(model, "generated kfold", 0, 1000);
+//        PrintStream printStream = new PrintStream(new FileOutputStream("generated2_Dempster_consonant.csv"));
+//        BeliefModelPrinter.printSensorBeliefAsCSV(model, printStream, 0, 1000, 1000);
+        System.out.println("global error : " + KnnUtils.error(data, model));
     }
 
     private static void testNormal() throws IOException {
@@ -84,8 +63,8 @@ public class Main1D {
 
         String absenceFile = ABSENCE_SAMPLE;
         String presenceFile = PRESENCE_SAMPLE;
-        List<LabelledPoint<Double>> absence = getPoints("absence", absenceFile, frame);
-        List<LabelledPoint<Double>> presence = getPoints("presence", presenceFile, frame);
+        List<LabelledPoint<Double>> absence = KnnUtils.getPoints("absence", absenceFile, frame);
+        List<LabelledPoint<Double>> presence = KnnUtils.getPoints("presence", presenceFile, frame);
 
         System.out.println(
                 "using " + absenceFile + " for absence and " + presenceFile + " for presence");
@@ -104,13 +83,32 @@ public class Main1D {
         System.out.println("using " + absenceFile + " for absence and " + presenceFile +
                 " for presence");
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
-        SensorBeliefModel<Double> model = modelForFiles(frame, factory, k, ABSENCE_SAMPLE,
-                PRESENCE_SAMPLE);
+//        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
+        List<LabelledPoint<Double>> data = KnnUtils.parseData(frame,
+                list -> {
+                    for (int i = list.size() - 1; i > 1; i--) {
+                        LabelledPoint<Double> previous = list.get(i - 1);
+                        LabelledPoint<Double> current = list.get(i);
+                        list.get(i).setValue(current.getValue() - previous.getValue());
+                    }
+
+                    list.remove(0);
+                    return list;
+                },
+                ABSENCE_SAMPLE, PRESENCE_SAMPLE);
+        SensorBeliefModel<Double> model = Kfold.generateModel(factory, data, k);
+
+        PrintStream printStream = new PrintStream(new FileOutputStream("presence_diff_DuboisPrade.csv"));
+        BeliefModelPrinter.printSensorBeliefAsCSV(model, printStream, - 2048, 2048, 2000);
+
         show(model, "k fold generated", 0, 4096);
-        List<LabelledPoint<Double>> validation = parseData(frame, ABSENCE_SAMPLE,
-                PRESENCE_SAMPLE);
-        showErrors(model, validation);
-        show(generateWeakeningModel(model, validation), "weakened", 0, 4096);
+
+        System.out.println("global error : " + KnnUtils.error(data, model));
+        showErrors(model, data);
+    }
+
+    public static void testAlpha() {
+
     }
 
     private static void crossValidation(FrameOfDiscernment frame, List<LabelledPoint<Double>> absence,
@@ -183,33 +181,6 @@ public class Main1D {
                     max + margin, "belief mapping, " + KnnUtils.error(trainingSet, beliefModel));
             tabbedPane.addTab("" + neighborCount, panel);
         }
-    }
-
-    /**
-     * Parse the given file to extract points. One file is expected to contain only one sensor.
-     *
-     * @param label state in which the sample was take (i.e. presence or absence)
-     * @param file  path to the file
-     * @return list of points in the file
-     * @throws IOException
-     */
-    private static List<LabelledPoint<Double>> getPoints(String label, String file,
-                                                         FrameOfDiscernment frame) throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
-        InputStream resourceAsStream = Thread.currentThread().getContextClassLoader()
-                .getResourceAsStream(file);
-        MappingIterator<SensorValue> iterator = mapper.readValues(
-                new JsonFactory().createParser(resourceAsStream),
-                SensorValue.class);
-        List<LabelledPoint<Double>> points = new ArrayList<>();
-        while (iterator.hasNext()) {
-            SensorValue next = iterator.next();
-            next.setLabel(label);
-            next.setStateSet(frame.toStateSet(next.getLabel()));
-            points.add(next);
-        }
-        return points;
     }
 
 
@@ -319,6 +290,7 @@ public class Main1D {
         }
         return stdDevs;
     }
+
 
     private static class WeakeningFunction implements Function<Double, Double> {
         private Map<Double, Double> alphas = new HashMap<>();
