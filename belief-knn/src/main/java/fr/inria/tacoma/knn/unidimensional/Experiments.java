@@ -16,10 +16,16 @@ import java.util.List;
 
 public class Experiments {
 
-    public static void generateFiles() throws IOException {
-        printGeneratedDataSets();
+    public static void main(String[] args) throws IOException {
+        generateFiles();
+    }
 
-        printPresenceAbsenceSample();
+    public static void generateFiles() throws IOException {
+//        printGeneratedDataSets();
+//
+//        printPresenceAbsenceSample();
+
+//        printAlphas();
     }
 
     private static void printPresenceAbsenceSample() throws IOException {
@@ -53,7 +59,7 @@ public class Experiments {
                 "samples/sample-1/sensor-1/presence-motion1.json");
 
         factory = KnnFactory.getDoubleKnnFactory(frame);
-        printModel("presence_diff_Dubois_Prade.csv", factory, data, - 2048, 2048, 1000);
+        printModel("presence_diff_Dubois_Prade.csv", factory, data, -2048, 2048, 1000);
     }
 
     private static void printGeneratedDataSets() throws IOException {
@@ -115,4 +121,26 @@ public class Experiments {
         BeliefModelPrinter.printSensorBeliefAsCSV(model, printStream, min, max, numPoints);
         System.out.println("global error : " + KnnUtils.error(data, model));
     }
+
+    private static void printAlphas() throws IOException {
+        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
+
+        //presence_DuboisPrade.csv
+        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
+        List<LabelledPoint<Double>> data = KnnUtils.parseData(frame,
+                "samples/sample-1/sensor-1/absence-motion1.json",
+                "samples/sample-1/sensor-1/presence-motion1.json");
+
+        PrintStream printStream = new PrintStream(new FileOutputStream("alpha.csv"));
+        printStream.println("alpha;error");
+
+//        List<LabelledPoint<Double>> crossValidation =
+
+        for (double alpha = 0; alpha < 1; alpha += 0.01){
+            KnnBelief<Double> beliefModel = factory.newKnnBelief(data,
+                    KnnUtils.generateGammaProvider((a, b) -> Math.abs(a - b), data), 2, alpha);
+            System.out.println(KnnUtils.error(data, beliefModel));
+        }
+    }
+
 }

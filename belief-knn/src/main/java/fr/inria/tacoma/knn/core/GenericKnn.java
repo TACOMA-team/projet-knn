@@ -61,6 +61,11 @@ public class GenericKnn<T> implements KnnBelief<T> {
     }
 
     @Override
+    public Map<String, Double> getGammas() {
+        return gammaProvider;
+    }
+
+    @Override
     public KnnBelief<T> withAlpha(double newAlpha) {
         return new GenericKnn<>(points, k, newAlpha, frame, combination, distance, gammaProvider);
     }

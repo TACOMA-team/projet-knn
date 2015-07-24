@@ -103,6 +103,11 @@ public class DoubleKnnBelief implements KnnBelief<Double> {
     }
 
     @Override
+    public Map<String, Double> getGammas() {
+        return gammaProvider;
+    }
+
+    @Override
     public KnnBelief<Double> withAlpha(double newAlpha) {
         return new DoubleKnnBelief(sortedPoints, k, newAlpha, frame, combination, distance,
                 gammaProvider, true);

@@ -111,7 +111,7 @@ public class KnnUtils {
             MutableMass idealMassFunction = model.getFrame().newMass()
                     .set(point.getStateSet(), 1);
             double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
-            return Math.pow(distance, 2);
+            return distance * distance;
         }).sum() / size;
 
     }
@@ -130,7 +130,6 @@ public class KnnUtils {
             List<LabelledPoint<T>> crossValidation) {
 
         int maxNeighborCount =  points.size() - 1;
-
         List<KnnBelief<T>> models = getKnnBeliefsForK(factory, points, crossValidation,
                 maxNeighborCount);
 
@@ -190,9 +189,9 @@ public class KnnUtils {
         double alpha = 0.05;
         int iterations = 0;
         double stopCriteria = 0.001;
-        double variation = 1;
+        double variation = stopCriteria + 2;
 //        System.out.println("k=" + k);
-        while(iterations < 10 && Math.abs(variation) > stopCriteria) {
+        while(iterations < 10 && variation > stopCriteria) {
             model = factory.newKnnBelief(points, gammas, k, alpha);
             variation = computeVariation(crossValidation, model, alpha);
 //            System.out.println(alpha + " - " + variation + " -> " +  (alpha - variation));

@@ -2,10 +2,14 @@ package fr.inria.tacoma.knn.core;
 
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 
+import java.util.Map;
+
 public interface KnnBelief<T> extends SensorBeliefModel<T> {
     int getK();
 
     double getAlpha();
+
+    Map<String, Double> getGammas();
 
     /**
      * create a copy of the model with the same parameters except for alpha
