@@ -76,4 +76,16 @@ public abstract class KnnFactory<T> {
             }
         };
     }
+
+    public static KnnFactory<Double> getDoubleDempsterFactory(FrameOfDiscernment frame) {
+        return new KnnFactory<Double>(frame, KnnUtils::optimizedDuboisAndPrade,
+                (a,b) -> Math.abs(a - b)) {
+            @Override
+            public KnnBelief<Double> newKnnBelief(List<? extends LabelledPoint<Double>> points,
+                                                  Map<String, Double> gammaProvider, int k, double alpha) {
+                return new DempsterDoubleKnn((List<LabelledPoint<Double>>) points, k,
+                        alpha, getFrame(), getDistance(), gammaProvider);
+            }
+        };
+    }
 }
