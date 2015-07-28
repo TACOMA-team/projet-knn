@@ -1,14 +1,19 @@
-package fr.inria.tacoma.knn.core;
+package fr.inria.tacoma.knn.unidimensional;
 
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MutableMass;
+import fr.inria.tacoma.knn.core.KnnBelief;
+import fr.inria.tacoma.knn.core.LabelledPoint;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
+/**
+ * Optimization of the Knn for a double value and a Dempster combination.
+ */
 public class DempsterDoubleKnn implements KnnBelief<Double> {
 
     private final int k;
@@ -118,10 +123,10 @@ public class DempsterDoubleKnn implements KnnBelief<Double> {
 
         ConcurrentHashMap<StateSet, Double> optimized = new ConcurrentHashMap<>();
         for (LabelledPoint<Double> point : knn) {
-            double gamma = 1.0 / gammaProvider.get(point.getLabel());
+            double gamma = gammaProvider.get(point.getLabel());
             optimized.compute(point.getStateSet(), (k, v) -> {
                 double newValue = 1 - (alpha *
-                        Math.exp(-distance.apply(sensorValue, point.getValue()) * gamma));
+                        Math.exp(-distance.apply(sensorValue, point.getValue()) / gamma));
                 if(v == null) {
                     return newValue;
                 }

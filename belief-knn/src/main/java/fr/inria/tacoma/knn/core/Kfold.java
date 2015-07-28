@@ -1,4 +1,4 @@
-package fr.inria.tacoma.knn.unidimensional;
+package fr.inria.tacoma.knn.core;
 
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;

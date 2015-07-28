@@ -3,15 +3,14 @@ package fr.inria.tacoma.knn.unidimensional;
 import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
+import fr.inria.tacoma.bft.core.mass.MutableMass;
 import fr.inria.tacoma.bft.criteria.Criteria;
 import fr.inria.tacoma.bft.decision.CriteriaDecisionStrategy;
 import fr.inria.tacoma.bft.decision.Decision;
 import fr.inria.tacoma.bft.decision.DecisionStrategy;
+import fr.inria.tacoma.bft.sensorbelief.FusionSensorBeliefModel;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
-import fr.inria.tacoma.bft.util.Mass;
-import fr.inria.tacoma.knn.core.KnnBelief;
-import fr.inria.tacoma.knn.core.KnnFactory;
-import fr.inria.tacoma.knn.core.LabelledPoint;
+import fr.inria.tacoma.knn.core.*;
 import fr.inria.tacoma.knn.util.ConsonantBeliefModel;
 import fr.inria.tacoma.knn.util.DiscountingBeliefModel;
 import fr.inria.tacoma.knn.util.KnnUtils;
@@ -23,7 +22,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Main1D {
@@ -43,7 +41,11 @@ public class Main1D {
 //        activityLevel();
 //        gammaOptimization();
 //        gammaOptimization2();
-        activityLevelAlphaGamma();
+//        long before = System.nanoTime();
+//        activityLevelAlphaGamma();
+//        System.out.println("elapsed: " + (double)(System.nanoTime() - before) / 1e9 + " s");
+        showErrorForActivityLevel();
+
     }
 
     private static void showGenerated() throws IOException {
@@ -99,7 +101,7 @@ public class Main1D {
         show(model, "k fold generated", 0, 4096);
 
         System.out.println("global error : " + KnnUtils.error(data, model));
-        showErrors(model, data);
+        Errors.showErrors(model, data);
     }
 
     private static void crossValidation(FrameOfDiscernment frame, List<LabelledPoint<Double>> absence,
@@ -236,35 +238,6 @@ public class Main1D {
         return discountingBeliefModel;
     }
 
-    private static void showErrors(SensorBeliefModel<Double> model,
-                                   List<LabelledPoint<Double>> crossValidation) {
-        DecisionStrategy decisionStrategy =
-                new CriteriaDecisionStrategy(0.5, 0.6, 0.7, Criteria::betP);
-        int errorCount = 0;
-        int imprecisionCount = 0;
-
-        for (LabelledPoint<Double> sensorValue : crossValidation) {
-            Decision decision = decisionStrategy.decide(
-                    model.toMass(sensorValue.getValue()));
-            StateSet actualDecision = decision.getStateSet();
-            StateSet expectedDecision = model.getFrame().toStateSet(sensorValue.getLabel());
-
-            if (!actualDecision.includesOrEquals(expectedDecision)) {
-                //System.out.println("bad decision for value: " + sensorValue.getValue());
-                errorCount++;
-            }
-            else if (!actualDecision.equals(expectedDecision)) {
-                imprecisionCount++;
-            }
-        }
-        System.out.println(errorCount + " errors out of " + crossValidation.size()
-                + " (" + (double)errorCount * 100 / crossValidation.size() +" %) tested point" +
-                " with decision algorithm.");
-        System.out.println(imprecisionCount + " imprecision out of " + crossValidation.size()
-                + " (" + (double)imprecisionCount * 100 / crossValidation.size() +" %) tested point" +
-                " with decision algorithm.");
-    }
-
 
     /**
      * Generate a map which gives the standard deviation for each label in the training set.
@@ -376,7 +349,7 @@ public class Main1D {
 
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
         factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
-        SensorBeliefModel<Double> result = KfoldGammas.generateModel(factory, data, 3);
+        SensorBeliefModel<Double> result = KfoldAlphaGammas.generateModel(factory, data, 3);
         show(result, data, "gradient");
         ConsonantBeliefModel<Double> consonant = new ConsonantBeliefModel<Double>(result);
         show(consonant, data, "gradient consonant");
@@ -391,7 +364,7 @@ public class Main1D {
         KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
         int windowSize = 5;
         List<LabelledPoint<Double>> data = KnnUtils.parseData(frame,
-                Features.slidingAverage(windowSize),
+                Features::log,
                 "samples/sample-7/son-yoann/absence-yoannd1.json",
                 "samples/sample-7/son-yoann/average-yoannd1.json",
                 "samples/sample-7/son-yoann/max-yoannd1.json",
@@ -406,15 +379,68 @@ public class Main1D {
 //                "samples/sample-7/motion0/weak-motion0.json",
 //                "samples/sample-7/motion0/average-motion0.json",
 //                "samples/sample-7/motion0/max-motion0.json");
-        SensorBeliefModel<Double> model = KfoldGammas.generateModel(factory, data, 3);
-        show(model, data, "activity level dubois prade");
-        show(new ConsonantBeliefModel<>(model), data, "consonant activity dubois prade");
 
-        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
-        SensorBeliefModel<Double> dempster = KfoldGammas.generateModel(factory, data, 3);
+//        SensorBeliefModel<Double> model = KfoldGammas.generateModel(factory, data, 3);
+//        show(model, data, "activity level dubois prade");
+//        show(new ConsonantBeliefModel<>(model), data, "consonant activity dubois prade");
+
+//        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
+//        factory.setCombination(KnnUtils::optimizedDempster);
+        factory = KnnFactory.getDoubleDempsterFactory(frame);
+        SensorBeliefModel<Double> dempster = KfoldAlphaGammas.generateModel(factory, data, 3);
         show(dempster, data, "activity level dempster");
         show(new ConsonantBeliefModel<>(dempster), data, "consonant activity dempster");
 
     }
 
+    private static void showErrorForActivityLevel() throws IOException {
+        FrameOfDiscernment frame =
+                FrameOfDiscernment.newFrame("activity", "absence", "weak", "average", "max");
+
+        List<LabelledPoint<Double>> sound = KnnUtils.parseData(frame,
+//                Features::log,
+                "samples/sample-7/soundphidget/absence-soundphidget.json",
+                "samples/sample-7/soundphidget/weak-soundphidget.json",
+                "samples/sample-7/soundphidget/average-soundphidget.json",
+                "samples/sample-7/soundphidget/max-soundphidget.json");
+        List<LabelledPoint<Double>> motion0 = KnnUtils.parseData(frame,
+                "samples/sample-7/motion0/absence-motion0.json",
+                "samples/sample-7/motion0/weak-motion0.json",
+                "samples/sample-7/motion0/average-motion0.json",
+                "samples/sample-7/motion0/max-motion0.json");
+        List<LabelledPoint<Double>> motion1 = KnnUtils.parseData(frame,
+                "samples/sample-7/motion1/absence-motion1.json",
+                "samples/sample-7/motion1/weak-motion1.json",
+                "samples/sample-7/motion1/average-motion1.json",
+                "samples/sample-7/motion1/max-motion1.json");
+        KnnFactory<Double> factory = KnnFactory.getDoubleDempsterFactory(frame);
+        SensorBeliefModel<Double> soundModel = KfoldAlphaGammas.generateModel(factory, sound, 3);
+        SensorBeliefModel<Double> motion0Model = KfoldAlphaGammas.generateModel(factory, motion0, 3);
+        SensorBeliefModel<Double> motion1Model = KfoldAlphaGammas.generateModel(factory, motion1, 3);
+
+        Map<SensorBeliefModel<Double>,List<LabelledPoint<Double>>> models = new HashMap<>();
+
+        models.put(soundModel, sound);
+        models.put(motion0Model, motion0);
+        models.put(motion1Model, motion1);
+
+
+//        Errors.showGlobalErrors(models);
+
+        Errors.showTimeLine(models);
+
+    }
+
+    private static class FakeFusionModel extends FusionSensorBeliefModel<Double> {
+
+        public FakeFusionModel(
+                SensorBeliefModel<Double> underlyingModel, double maxTime) {
+            super(underlyingModel, maxTime);
+        }
+
+        @Override
+        public MutableMass toMass(Double sensorValue) {
+            return this.toMass(sensorValue, 1.0);
+        }
+    }
 }

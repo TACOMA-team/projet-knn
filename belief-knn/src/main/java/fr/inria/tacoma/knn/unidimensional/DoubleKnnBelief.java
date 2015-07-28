@@ -1,8 +1,10 @@
-package fr.inria.tacoma.knn.core;
+package fr.inria.tacoma.knn.unidimensional;
 
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MutableMass;
+import fr.inria.tacoma.knn.core.KnnBelief;
+import fr.inria.tacoma.knn.core.LabelledPoint;
 
 import java.util.*;
 import java.util.function.BiFunction;

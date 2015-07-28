@@ -3,6 +3,7 @@ package fr.inria.tacoma.knn.unidimensional;
 import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
+import fr.inria.tacoma.knn.core.Kfold;
 import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.core.KnnFactory;
 import fr.inria.tacoma.knn.core.LabelledPoint;

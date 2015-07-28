@@ -5,6 +5,7 @@ import fr.inria.tacoma.knn.core.LabelledPoint;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class Features {
     static Function<List<LabelledPoint<Double>>, List<LabelledPoint<Double>>>
@@ -59,5 +60,14 @@ public class Features {
             }
             return transformed;
         };
+    }
+
+    public static List<LabelledPoint<Double>> log(List<LabelledPoint<Double>> points) {
+        return points.stream().map(point -> {
+            SensorValue newPoint = new SensorValue(point.getSensor(), point.getLabel(),
+                    point.getTimestamp(), Math.log(point.getValue()));
+            newPoint.setStateSet(point.getStateSet());
+            return newPoint;
+        }).collect(Collectors.toList());
     }
 }

@@ -2,6 +2,8 @@ package fr.inria.tacoma.knn.core;
 
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
+import fr.inria.tacoma.knn.unidimensional.DempsterDoubleKnn;
+import fr.inria.tacoma.knn.unidimensional.DoubleKnnBelief;
 import fr.inria.tacoma.knn.util.KnnUtils;
 
 import java.util.List;

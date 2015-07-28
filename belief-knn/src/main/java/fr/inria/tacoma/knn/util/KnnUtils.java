@@ -88,7 +88,51 @@ public class KnnUtils {
             });
         }
 
+        System.out.println(masses);
         return Combinations.duboisAndPrade(new ArrayList<>(optimized.values()));
+    }
+
+    /**
+     * An hybrid fusion mechanism which apply dempster for every points with the same label, end the
+     * fuse the resulting mass functions with dubois and prade. This allow to perform a very
+     * efficient dubois and prade.
+     *
+     * @param masses masses to fuse
+     * @return fused mass function
+     */
+    public static MassFunction optimizedDuboisAndPrade2(List<MassFunction> masses) {
+        Map<Set<StateSet>, MassFunction> optimized = new HashMap<>();
+
+        for (MassFunction mass : masses) {
+            optimized.compute(mass.getFocalStateSets(), (k,v) -> {
+                if(v == null) {
+                    return mass;
+                }
+                else {
+                    return Combinations.dempster(mass, v);
+                }
+            });
+        }
+
+        System.out.println(masses);
+        return Combinations.duboisAndPrade(new ArrayList<>(optimized.values()));
+    }
+
+    public static MassFunction optimizedDempster(List<MassFunction> masses) {
+        Map<Set<StateSet>, MassFunction> optimized = new HashMap<>();
+
+        for (MassFunction mass : masses) {
+            optimized.compute(mass.getFocalStateSets(), (k,v) -> {
+                if(v == null) {
+                    return mass;
+                }
+                else {
+                    return Combinations.dempster(mass, v);
+                }
+            });
+        }
+
+        return optimized.values().stream().reduce(Combinations::dempster).get();
     }
 
     /**

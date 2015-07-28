@@ -1,6 +1,7 @@
 package fr.inria.tacoma.knn.unidimensional;
 
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
+import fr.inria.tacoma.knn.core.GradientDescent;
 import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.core.KnnFactory;
 import fr.inria.tacoma.knn.core.LabelledPoint;
@@ -10,7 +11,7 @@ import fr.inria.tacoma.knn.util.KnnUtils;
 import java.util.ArrayList;
 import java.util.List;
 
-public class KfoldGammas<T> {
+public class KfoldAlphaGammas<T> {
 
     public static  <T> SensorBeliefModel<T> generateModel(KnnFactory<T> factory,
                                                      List<LabelledPoint<T>> samples, int k) {
@@ -33,7 +34,8 @@ public class KfoldGammas<T> {
                     KnnUtils.generateGammaProvider(factory.getDistance(),trainingSet));
             KnnBelief<T> model = grad.iterate(1000);
             System.out.println("result : k=" + model.getK() + "; alpha=" + model.getAlpha() +
-                    "; gammas=" + model.getGammas());
+                    "; gammas=" + model.getGammas() +
+                    "; error=" + KnnUtils.error(crossValidation, model));
             models.add(model);
         }
 
