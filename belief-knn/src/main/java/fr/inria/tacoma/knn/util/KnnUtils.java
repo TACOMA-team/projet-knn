@@ -9,6 +9,7 @@ import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MutableMass;
+import fr.inria.tacoma.bft.criteria.Criteria;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 import fr.inria.tacoma.bft.util.Mass;
 import fr.inria.tacoma.knn.core.KnnBelief;
@@ -87,8 +88,6 @@ public class KnnUtils {
                 }
             });
         }
-
-        System.out.println(masses);
         return Combinations.duboisAndPrade(new ArrayList<>(optimized.values()));
     }
 
@@ -149,15 +148,14 @@ public class KnnUtils {
      */
     public static <T> double error(List<? extends LabelledPoint<T>> crossValidation,
                                    SensorBeliefModel<T> model) {
-        int size = crossValidation.size();
         return crossValidation.stream().mapToDouble(point -> {
             MassFunction actualMassFunction = model.toMass(point.getValue());
             MutableMass idealMassFunction = model.getFrame().newMass()
-                    .set(point.getStateSet(), 1);
+                    .set(point.getStateSet(), 1.0)
+                    .putRemainingOnIgnorance();
             double distance = Mass.jousselmeDistance(actualMassFunction, idealMassFunction);
             return distance * distance;
-        }).sum() / size;
-
+        }).average().orElse(0);
     }
 
 

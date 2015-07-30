@@ -4,39 +4,39 @@ import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
 import fr.inria.tacoma.bft.core.mass.MutableMass;
+import fr.inria.tacoma.bft.util.Mass;
 import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.core.LabelledPoint;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
 /**
  * Optimization of the Knn for a double value and a Dempster combination.
  */
-public class DempsterDoubleKnn implements KnnBelief<Double> {
+public class DempsterAlphaDoubleKnn implements KnnBelief<Double> {
 
     private final int k;
-    private final double alpha;
+    private final Map<String, Double> alphaProvider;
     private final FrameOfDiscernment frame;
     private final List<LabelledPoint<Double>> sortedPoints;
     private final Map<String, Double> gammaProvider;
     private final BiFunction<Double, Double, Double> distance;
 
-    public DempsterDoubleKnn(List<LabelledPoint<Double>> points, int k, double alpha,
-                           FrameOfDiscernment frame,
-                           BiFunction<Double, Double, Double> distance,
-                           Map<String,Double> gammaProvider) {
-        this(points, k, alpha, frame, distance, gammaProvider, false);
+    public DempsterAlphaDoubleKnn(List<LabelledPoint<Double>> points, int k, Map<String, Double> alphaProvider,
+                                  FrameOfDiscernment frame,
+                                  BiFunction<Double, Double, Double> distance,
+                                  Map<String, Double> gammaProvider) {
+        this(points, k, alphaProvider, frame, distance, gammaProvider, false);
     }
 
-    private DempsterDoubleKnn(List<LabelledPoint<Double>> points, int k, double alpha,
-                            FrameOfDiscernment frame,
-                            BiFunction<Double, Double, Double> distance,
-                            Map<String,Double> gammaProvider, boolean sorted) {
-        assert alpha > 0;
+    private DempsterAlphaDoubleKnn(List<LabelledPoint<Double>> points, int k,
+                                   Map<String, Double> alphaProvider,
+                                   FrameOfDiscernment frame,
+                                   BiFunction<Double, Double, Double> distance,
+                                   Map<String, Double> gammaProvider, boolean sorted) {
         this.k = k;
-        this.alpha = alpha;
+        this.alphaProvider = alphaProvider;
         this.frame = frame;
         this.distance = distance;
         this.gammaProvider = gammaProvider;
@@ -84,6 +84,10 @@ public class DempsterDoubleKnn implements KnnBelief<Double> {
         return sortedPoints.subList(startIndex, endIndex + 1);
     }
 
+    public Map<String, Double> getAlphaProvider() {
+        return alphaProvider;
+    }
+
     @Override
     public int getK() {
         return k;
@@ -91,7 +95,7 @@ public class DempsterDoubleKnn implements KnnBelief<Double> {
 
     @Override
     public double getAlpha() {
-        return alpha;
+        return 0;
     }
 
     @Override
@@ -101,20 +105,17 @@ public class DempsterDoubleKnn implements KnnBelief<Double> {
 
     @Override
     public KnnBelief<Double> withAlpha(double newAlpha) {
-        return new DempsterDoubleKnn(sortedPoints, k, newAlpha, frame, distance,
-                gammaProvider, true);
+        return null;
     }
 
     @Override
     public KnnBelief<Double> withK(int newK) {
-        return new DempsterDoubleKnn(sortedPoints, newK, alpha, frame, distance,
-                gammaProvider, true);
+        return null;
     }
 
     @Override
     public KnnBelief<Double> withAlphaAndK(double newAlpha, int newK) {
-        return new DempsterDoubleKnn(sortedPoints, newK, newAlpha, frame, distance,
-                gammaProvider, true);
+        return null;
     }
 
     @Override
@@ -124,6 +125,7 @@ public class DempsterDoubleKnn implements KnnBelief<Double> {
         Map<StateSet, Double> optimized = new HashMap<>();
         for (LabelledPoint<Double> point : knn) {
             double gamma = gammaProvider.get(point.getLabel());
+            double alpha = alphaProvider.get(point.getLabel());
             optimized.compute(point.getStateSet(), (k, v) -> {
                 double newValue = 1 - (alpha *
                         Math.exp(-distance.apply(sensorValue, point.getValue()) / gamma));
@@ -157,7 +159,7 @@ public class DempsterDoubleKnn implements KnnBelief<Double> {
         resultMass.set(frame.fullIgnoranceSet(), ignoranceMass);
 
         resultMass.normalize();
-        return resultMass;
+        return (MutableMass)Mass.toConsonant(resultMass);
     }
 
 

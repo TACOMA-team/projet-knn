@@ -3,6 +3,7 @@ package fr.inria.tacoma.knn.unidimensional;
 import fr.inria.tacoma.knn.core.LabelledPoint;
 
 import java.util.ArrayList;
+import java.util.DoubleSummaryStatistics;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -67,6 +68,29 @@ public class Features {
             SensorValue newPoint = new SensorValue(point.getSensor(), point.getLabel(),
                     point.getTimestamp(), Math.log(point.getValue()));
             newPoint.setStateSet(point.getStateSet());
+            return newPoint;
+        }).collect(Collectors.toList());
+    }
+
+    public static List<LabelledPoint<Double>> normalized(List<LabelledPoint<Double>> points) {
+        DoubleSummaryStatistics stats = points.stream().mapToDouble(
+                LabelledPoint::getValue).summaryStatistics();
+        double min = stats.getMin();
+        double max = stats.getMax();
+
+        return points.stream().map(p -> {
+            LabelledPoint<Double> newPoint = new SensorValue(p);
+            newPoint.setValue((p.getValue() - min) / (max - min));
+            return newPoint;
+        }).collect(Collectors.toList());
+    }
+
+    public static List<LabelledPoint<Double>> distToAverage(List<LabelledPoint<Double>> points) {
+        double average = points.stream().mapToDouble(LabelledPoint::getValue).average().getAsDouble();
+
+        return points.stream().map(p -> {
+            LabelledPoint<Double> newPoint = new SensorValue(p);
+            newPoint.setValue(Math.abs(average - p.getValue()));
             return newPoint;
         }).collect(Collectors.toList());
     }

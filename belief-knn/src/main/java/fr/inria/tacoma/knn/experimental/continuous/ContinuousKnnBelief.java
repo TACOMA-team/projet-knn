@@ -1,4 +1,4 @@
-package fr.inria.tacoma.knn.continuous;
+package fr.inria.tacoma.knn.experimental.continuous;
 
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
 

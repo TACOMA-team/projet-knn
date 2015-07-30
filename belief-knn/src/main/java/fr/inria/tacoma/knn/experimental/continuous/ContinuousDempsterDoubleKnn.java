@@ -1,5 +1,6 @@
-package fr.inria.tacoma.knn.continuous;
+package fr.inria.tacoma.knn.experimental.continuous;
 
+import fr.inria.tacoma.bft.combinations.Combinations;
 import fr.inria.tacoma.bft.core.frame.FrameOfDiscernment;
 import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.bft.core.mass.MassFunction;
@@ -131,32 +132,48 @@ public class ContinuousDempsterDoubleKnn implements ContinuousKnnBelief<Double> 
             knn = knn.subList(0, knn.size() - 1);
         }
 
-        Map<StateSet, Double> optimized = getClustersFullIgnoranceValues(sensorValue, knn, farthestPoint);
+        MutableMass massResult = knn.stream()
+                .map(p -> getMassFunction(sensorValue, p))
+                .reduce(Combinations::dempster).get();
+        double remainingK = k - (int)k;
+        MassFunction reducedMass = getMassFunction(sensorValue, farthestPoint).discount(1 - remainingK);
+        massResult = Combinations.dempster(massResult, reducedMass);
+        return massResult;
+//        Map<StateSet, Double> optimized = getClustersFullIgnoranceValues(sensorValue, knn, farthestPoint);
+//
+//
+//        MutableMass resultMass = frame.newMass();
+//
+//        double ignoranceMass = 1;
+//        for (StateSet stateSet : optimized.keySet()) {
+//            double result = 1;
+//            for (Map.Entry<StateSet, Double> entry : optimized.entrySet()) {
+//                Double value = entry.getValue();
+//                if(!entry.getKey().equals(stateSet)) {
+//                    result = result * value;
+//                }
+//                else {
+//                    result = result * (1 - value);
+//                }
+//
+//                ignoranceMass = ignoranceMass * value;
+//            }
+//            resultMass.set(stateSet, result);
+//        }
+//        resultMass.set(frame.fullIgnoranceSet(), ignoranceMass);
+//
+//        resultMass.normalize();
+//
+//        return resultMass;
+    }
 
-
-        MutableMass resultMass = frame.newMass();
-
-        double ignoranceMass = 1;
-        for (StateSet stateSet : optimized.keySet()) {
-            double result = 1;
-            for (Map.Entry<StateSet, Double> entry : optimized.entrySet()) {
-                Double value = entry.getValue();
-                if(!entry.getKey().equals(stateSet)) {
-                    result = result * value;
-                }
-                else {
-                    result = result * (1 - value);
-                }
-
-                ignoranceMass = ignoranceMass * value;
-            }
-            resultMass.set(stateSet, result);
-        }
-        resultMass.set(frame.fullIgnoranceSet(), ignoranceMass);
-
-        resultMass.normalize();
-
-        return resultMass;
+    private MutableMass getMassFunction(Double value, LabelledPoint<Double> point) {
+        MutableMass mass = frame.newMass();
+        double gamma = 1.0 / gammaProvider.get(point.getLabel());
+        mass.addToFocal(point.getStateSet(),
+                alpha * Math.exp(-distance.apply(value, point.getValue()) * gamma));
+        mass.putRemainingOnIgnorance();
+        return mass;
     }
 
     private Map<StateSet, Double> getClustersFullIgnoranceValues(Double sensorValue,

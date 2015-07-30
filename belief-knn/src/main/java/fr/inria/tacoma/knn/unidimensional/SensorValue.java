@@ -1,6 +1,7 @@
 package fr.inria.tacoma.knn.unidimensional;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import fr.inria.tacoma.bft.core.frame.StateSet;
 import fr.inria.tacoma.knn.core.LabelledPoint;
 
 public class SensorValue extends LabelledPoint<Double> {
@@ -10,6 +11,10 @@ public class SensorValue extends LabelledPoint<Double> {
                        @JsonProperty("timestamp") double timestamp,
                        @JsonProperty("value") Double value) {
         super(sensor, label, timestamp, value);
+    }
+
+    public SensorValue(LabelledPoint<Double> point) {
+        super(point);
     }
 
     @Override

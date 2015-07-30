@@ -18,6 +18,14 @@ public class LabelledPoint<T> {
         this.value = value;
     }
 
+    public LabelledPoint(LabelledPoint<T> point) {
+        this.sensor = point.sensor;
+        this.label = point.label;
+        this.timestamp = point.timestamp;
+        this.value = point.value;
+        this.stateSet = point.stateSet;
+    }
+
     public String getLabel() {
         return label;
     }

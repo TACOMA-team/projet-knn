@@ -1,7 +1,7 @@
 package fr.inria.tacoma.knn.unidimensional;
 
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
-import fr.inria.tacoma.knn.core.GradientDescent;
+import fr.inria.tacoma.knn.experimental.GradientDescentGamma;
 import fr.inria.tacoma.knn.core.KnnBelief;
 import fr.inria.tacoma.knn.core.KnnFactory;
 import fr.inria.tacoma.knn.core.LabelledPoint;
@@ -30,7 +30,7 @@ public class KfoldAlphaGammas<T> {
                     trainingSet.addAll(sublists.get(j));
                 }
             }
-            GradientDescent<T> grad = new GradientDescent<>(factory, trainingSet, crossValidation,
+            GradientDescentGamma<T> grad = new GradientDescentGamma<>(factory, trainingSet, crossValidation,
                     KnnUtils.generateGammaProvider(factory.getDistance(),trainingSet));
             KnnBelief<T> model = grad.iterate(1000);
             System.out.println("result : k=" + model.getK() + "; alpha=" + model.getAlpha() +

@@ -53,6 +53,10 @@ public abstract class KnnFactory<T> {
     public abstract KnnBelief<T> newKnnBelief(List<? extends LabelledPoint<T>> points,
                                               Map<String, Double> gammaProvider, int k, double alpha);
 
+
+
+    /*********************************************************************************/
+
     public static <T> KnnFactory<T> getGenericFactory(FrameOfDiscernment frame,
                                                       BiFunction<T, T, Double> distance) {
 
