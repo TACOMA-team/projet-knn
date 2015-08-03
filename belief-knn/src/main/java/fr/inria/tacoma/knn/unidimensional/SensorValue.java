@@ -12,6 +12,10 @@ public class SensorValue extends LabelledPoint<Double> {
                        @JsonProperty("value") Double value) {
         super(sensor, label, timestamp, value);
     }
+    public SensorValue(String sensor, String label, double timestamp, Double value,
+                       StateSet stateSet) {
+        super(sensor, label, timestamp, value, stateSet);
+    }
 
     public SensorValue(LabelledPoint<Double> point) {
         super(point);

@@ -13,7 +13,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class Kfold<T> {
+public abstract class Kfold<T> {
 
     public static  <T> SensorBeliefModel<T> generateModel(KnnFactory<T> factory,
                                                      List<LabelledPoint<T>> samples, int k) {

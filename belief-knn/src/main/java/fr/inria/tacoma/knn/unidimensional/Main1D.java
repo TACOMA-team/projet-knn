@@ -10,12 +10,7 @@ import fr.inria.tacoma.bft.decision.Decision;
 import fr.inria.tacoma.bft.decision.DecisionStrategy;
 import fr.inria.tacoma.bft.sensorbelief.FusionSensorBeliefModel;
 import fr.inria.tacoma.bft.sensorbelief.SensorBeliefModel;
-import fr.inria.tacoma.knn.experimental.continuous.ContinuousDempsterDoubleKnn;
-import fr.inria.tacoma.knn.experimental.continuous.ContinuousKnnBelief;
 import fr.inria.tacoma.knn.core.*;
-import fr.inria.tacoma.knn.experimental.GradientDescentAlphas;
-import fr.inria.tacoma.knn.experimental.GradientDescentAlphasGammas;
-import fr.inria.tacoma.knn.experimental.GradientDescentGamma;
 import fr.inria.tacoma.knn.util.ConsonantBeliefModel;
 import fr.inria.tacoma.knn.util.DiscountingBeliefModel;
 import fr.inria.tacoma.knn.util.KnnUtils;
@@ -51,9 +46,6 @@ public class Main1D {
 //        activityLevelAlphaGamma();
 //        System.out.println("elapsed: " + (double) (System.nanoTime() - before) / 1e9 + " s");
 //        showErrorForActivityLevel();
-//        testContinuous();
-//        testGradientAlphas();
-        testGradientAlphasAndGammas();
     }
 
     private static void showGenerated() throws IOException {
@@ -87,44 +79,6 @@ public class Main1D {
 //        absence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
 //        presence.forEach(p -> p.setValue(Math.abs(p.getValue() - SENSOR_VALUE_CENTER)));
         crossValidation(frame, absence, presence);
-    }
-
-    private static void testContinuous() throws IOException {
-        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-
-        String absenceFile = ABSENCE_SAMPLE;
-        String presenceFile = PRESENCE_SAMPLE;
-        List<LabelledPoint<Double>> absence = KnnUtils.getPoints("absence", absenceFile, frame);
-        List<LabelledPoint<Double>> presence = KnnUtils.getPoints("presence", presenceFile, frame);
-
-        System.out.println(
-                "using " + absenceFile + " for absence and " + presenceFile + " for presence");
-
-        // extracting cross validation data
-
-        List<LabelledPoint<Double>> crossValidation = KnnUtils.extractSubList(absence, TRAINING_SET_RATIO);
-        crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
-
-        List<LabelledPoint<Double>> data = new ArrayList<>(absence);
-        data.addAll(presence);
-
-        //creating training set
-        List<LabelledPoint<Double>> trainingSet = new ArrayList<>();
-        trainingSet.addAll(absence);
-        trainingSet.addAll(presence);
-        for (double k = 5.0; k < 72; k+=0.1) {
-            ContinuousKnnBelief<Double> beliefModel =
-                    new ContinuousDempsterDoubleKnn(trainingSet, k, 0.2, frame,
-                            (a,b) -> Math.abs(a-b),
-                            KnnUtils.generateGammaProvider((a,b) -> Math.abs(a-b), trainingSet));
-            double error = KnnUtils.error(crossValidation, beliefModel);
-            System.out.println(k+";"+error);
-        }
-//        result = generateWeakeningModel(result, data);
-//        result = new ConsonantBeliefModel<>(result);
-//        System.out.println("error for best model : " + KnnUtils.error(data, result));
-//        show(result, data, "cross validation");
-//        showErrors(result, data);
     }
 
     private static void testKfold(int k) throws IOException {
@@ -347,103 +301,6 @@ public class Main1D {
     }
 
 
-    public static void gammaOptimization() throws IOException {
-        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-
-        String absenceFile = ABSENCE_SAMPLE;
-        String presenceFile = PRESENCE_SAMPLE;
-        List<LabelledPoint<Double>> absence = KnnUtils.getPoints("absence", absenceFile, frame);
-        List<LabelledPoint<Double>> presence = KnnUtils.getPoints("presence", presenceFile, frame);
-
-        List<LabelledPoint<Double>> crossValidation = KnnUtils.extractSubList(absence,
-                TRAINING_SET_RATIO);
-        crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
-
-        List<LabelledPoint<Double>> data = new ArrayList<>(absence);
-        data.addAll(presence);
-
-        //creating training set
-        List<LabelledPoint<Double>> trainingSet = new ArrayList<>();
-        trainingSet.addAll(absence);
-        trainingSet.addAll(presence);
-        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
-
-//        for (double gamma = 0.01; gamma < 1; gamma += 0.01) {
-//            System.out.print(gamma + ";");
-//            Map<String, Double> standardDevs = getStandardDevs(trainingSet);
-//            standardDevs.put("presence", gamma);
-//            KnnBelief<Double> doubleKnnBelief = factory.newKnnBelief(trainingSet, standardDevs,
-//                    trainingSet.size() / 2, 0.4);
-//            System.out.println(KnnUtils.error(crossValidation, doubleKnnBelief));
-//        }
-//        System.out.println(trainingSet.size());
-//        System.out.println(crossValidation.size());
-//        crossValidation.stream().mapToDouble(LabelledPoint::getValue).forEach(System.out::println);
-//        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
-        GradientDescentGamma<Double> gradientDescent =
-                new GradientDescentGamma<>(factory, trainingSet, crossValidation,
-                        getStandardDevs(trainingSet));
-        KnnBelief<Double> result = gradientDescent.iterate(500);
-        show(result, data, "gradient");
-        System.out.println("result : k=" + result.getK() + "; alpha=" + result.getAlpha() +
-                "; gammas=" + result.getGammas());
-        show(new ConsonantBeliefModel<Double>(result), data, "gradient consonant");
-    }
-
-    public static void gammaOptimization2() throws IOException {
-        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-
-        List<LabelledPoint<Double>> data = KnnUtils.parseData(frame,
-                ABSENCE_SAMPLE, PRESENCE_SAMPLE);
-
-        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
-        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
-        SensorBeliefModel<Double> result = KfoldAlphaGammas.generateModel(factory, data, 3);
-        show(result, data, "gradient");
-        ConsonantBeliefModel<Double> consonant = new ConsonantBeliefModel<Double>(result);
-        show(consonant, data, "gradient consonant");
-        DecisionStrategy decisionStrategy = new CriteriaDecisionStrategy(0.2, 0.5, 0.5, Criteria::betP);
-        show(DiscountingBeliefModel.generateDiscountingModel(consonant, data, decisionStrategy,
-                getStandardDevs(data)), data, "discounted");
-    }
-
-    private static void activityLevelAlphaGamma() throws IOException {
-        FrameOfDiscernment frame =
-                FrameOfDiscernment.newFrame("activity", "absence", "weak", "average", "max");
-        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
-        int windowSize = 5;
-//        List<LabelledPoint<Double>> data = KnnUtils.parseData(frame,
-//                Features::log,
-//                "samples/sample-7/son-yoann/absence-yoannd1.json",
-//                "samples/sample-7/son-yoann/average-yoannd1.json",
-//                "samples/sample-7/son-yoann/max-yoannd1.json",
-//                "samples/sample-7/son-yoann/weak-yoannd1.json");
-//        List<LabelledPoint<Double>> data = KnnUtils.parseData(frame,
-//                "samples/sample-7/soundphidget/absence-soundphidget.json",
-//                "samples/sample-7/soundphidget/weak-soundphidget.json",
-//                "samples/sample-7/soundphidget/average-soundphidget.json",
-//                "samples/sample-7/soundphidget/max-soundphidget.json");
-
-
-        List<LabelledPoint<Double>> data = KnnUtils.parseData(frame,
-//                Features::distToAverage,
-                "samples/sample-7/motion1/absence-motion1.json",
-                "samples/sample-7/motion1/weak-motion1.json",
-                "samples/sample-7/motion1/average-motion1.json",
-                "samples/sample-7/motion1/max-motion1.json");
-
-//        SensorBeliefModel<Double> model = KfoldGammas.generateModel(factory, data, 3);
-//        show(model, data, "activity level dubois prade");
-//        show(new ConsonantBeliefModel<>(model), data, "consonant activity dubois prade");
-
-//        factory.setCombination(functions -> functions.stream().reduce(Combinations::dempster).get());
-//        factory.setCombination(KnnUtils::optimizedDempster);
-        factory = KnnFactory.getDoubleDempsterFactory(frame);
-        SensorBeliefModel<Double> dempster = KfoldAlphaGammas.generateModel(factory, data, 3);
-        show(dempster, data, "activity level dempster");
-        show(new ConsonantBeliefModel<>(dempster), data, "consonant activity dempster");
-
-    }
 
     private static void showErrorForActivityLevel() throws IOException {
         FrameOfDiscernment frame =
@@ -494,75 +351,5 @@ public class Main1D {
         public MutableMass toMass(Double sensorValue) {
             return this.toMass(sensorValue, 1.0);
         }
-    }
-
-    public static void testGradientAlphas() throws IOException {
-        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-
-        String absenceFile = ABSENCE_SAMPLE;
-        String presenceFile = PRESENCE_SAMPLE;
-        List<LabelledPoint<Double>> absence = KnnUtils.getPoints("absence", absenceFile, frame);
-        List<LabelledPoint<Double>> presence = KnnUtils.getPoints("presence", presenceFile, frame);
-
-        List<LabelledPoint<Double>> crossValidation = KnnUtils.extractSubList(absence,
-                TRAINING_SET_RATIO);
-        crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
-
-        List<LabelledPoint<Double>> data = new ArrayList<>(absence);
-        data.addAll(presence);
-
-        //creating training set
-        List<LabelledPoint<Double>> trainingSet = new ArrayList<>();
-        trainingSet.addAll(absence);
-        trainingSet.addAll(presence);
-        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
-
-        GradientDescentAlphas gradientDescent =
-                new GradientDescentAlphas(factory, trainingSet, crossValidation,
-                        KnnUtils.generateGammaProvider((a,b)->Math.abs(a-b), trainingSet), 40);
-        DempsterAlphaDoubleKnn result = gradientDescent.iterate(250);
-//        result.getAlphaProvider().put("absence", 0.40);
-        System.out.println("final error=" + KnnUtils.error(crossValidation, result));
-        show(result, data, "gradient alpha");
-        System.out.println("result : k=" + result.getK() + "; alphas=" + result.getAlphaProvider() +
-                "; gammas=" + result.getGammas());
-        show(new ConsonantBeliefModel<Double>(result), data, "gradient alpha consonant");
-        System.out.println();
-
-    }
-
-    public static void testGradientAlphasAndGammas() throws IOException {
-        FrameOfDiscernment frame = FrameOfDiscernment.newFrame("presence", "presence", "absence");
-
-        String absenceFile = ABSENCE_SAMPLE;
-        String presenceFile = PRESENCE_SAMPLE;
-        List<LabelledPoint<Double>> absence = KnnUtils.getPoints("absence", absenceFile, frame);
-        List<LabelledPoint<Double>> presence = KnnUtils.getPoints("presence", presenceFile, frame);
-
-        List<LabelledPoint<Double>> crossValidation = KnnUtils.extractSubList(absence,
-                TRAINING_SET_RATIO);
-        crossValidation.addAll(KnnUtils.extractSubList(presence, TRAINING_SET_RATIO));
-
-        List<LabelledPoint<Double>> data = new ArrayList<>(absence);
-        data.addAll(presence);
-
-        //creating training set
-        List<LabelledPoint<Double>> trainingSet = new ArrayList<>();
-        trainingSet.addAll(absence);
-        trainingSet.addAll(presence);
-        KnnFactory<Double> factory = KnnFactory.getDoubleKnnFactory(frame);
-
-        GradientDescentAlphasGammas gradientDescent =
-                new GradientDescentAlphasGammas(factory, trainingSet, crossValidation,
-                        KnnUtils.generateGammaProvider((a,b)->Math.abs(a-b), trainingSet), 70);
-        DempsterAlphaDoubleKnn result = gradientDescent.iterate(250);
-//        result.getAlphaProvider().put("absence", 0.40);
-        System.out.println("final error=" + KnnUtils.error(crossValidation, result));
-        show(result, data, "gradient alpha");
-        System.out.println("result : k=" + result.getK() + "; alphas=" + result.getAlphaProvider() +
-                "; gammas=" + result.getGammas());
-        show(new ConsonantBeliefModel<Double>(result), data, "gradient alpha consonant");
-        System.out.println();
-
     }
 }

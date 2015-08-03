@@ -12,10 +12,7 @@ public class LabelledPoint<T> {
 
     public LabelledPoint(@JsonProperty("sensor") String sensor, @JsonProperty("label") String label,
                          @JsonProperty("timestamp") double timestamp, T value) {
-        this.sensor = sensor;
-        this.label = label;
-        this.timestamp = timestamp;
-        this.value = value;
+        this(sensor, label, timestamp, value, null);
     }
 
     public LabelledPoint(LabelledPoint<T> point) {
@@ -24,6 +21,15 @@ public class LabelledPoint<T> {
         this.timestamp = point.timestamp;
         this.value = point.value;
         this.stateSet = point.stateSet;
+    }
+
+    public LabelledPoint(String sensor, String label, double timestamp, T value,
+                         StateSet stateSet) {
+        this.sensor = sensor;
+        this.label = label;
+        this.timestamp = timestamp;
+        this.value = value;
+        this.stateSet = stateSet;
     }
 
     public String getLabel() {
